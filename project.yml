@@ -1,0 +1,66 @@
+name: GazeTrackerPhase1
+options:
+  bundleIdPrefix: com.gazetracker
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+packages:
+  SwiftTasksVision:
+    url: https://github.com/paescebu/SwiftTasksVision.git
+    from: 0.10.21
+
+targets:
+  GazeTrackerPhase1:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+      - path: Models/face_landmarker.task
+        buildPhase: resources
+      - path: Models/GazeNet.mlpackage
+      # Experiment 3 word tiles (regenerate with Tools/gen_word_images.py).
+      # Resources/Experiment2Images is intentionally NOT bundled any more:
+      # it belonged to the old image-traversal Experiment 2, which the
+      # fixation-stability task replaced. The files are kept on disk in case
+      # the emotion-phrase set is wanted for a future word set.
+      - path: Resources/Experiment3Images
+        buildPhase: resources
+    info:
+      path: GazeTrackerPhase1/Info.plist
+      properties:
+        CFBundleDisplayName: GazeTracker
+        NSCameraUsageDescription: "This app uses the front camera to detect facial landmarks for gaze tracking."
+        NSLocalNetworkUsageDescription: "Fetches fine-tuned gaze models from your laptop on the local network."
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIRequiredDeviceCapabilities:
+          - arm64
+          - front-facing-camera
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gazetracker.phase1
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "15.0"
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
+        ENABLE_PREVIEWS: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+    dependencies:
+      - package: SwiftTasksVision
+        product: SwiftTasksVision
+    # Emit a *shared* scheme. Without this, the only scheme is the one Xcode
+    # auto-creates under xcuserdata, which `xcodegen generate` wipes — so
+    # `xcodebuild -scheme GazeTrackerPhase1` breaks after every regeneration.
+    scheme:
+      configVariants: []
