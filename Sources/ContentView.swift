@@ -113,7 +113,7 @@ struct ContentView: View {
                 // (stacked).
                 if viewModel.isIdle {
                     VStack(alignment: .trailing, spacing: 8) {
-                        if viewModel.calibration != nil {
+                        if viewModel.isCalibrationUsable {
                             triggerButton("Experiment 3 — Communication",
                                           color: .pink.opacity(0.9)) {
                                 viewModel.startCommunicationTask()
@@ -126,10 +126,6 @@ struct ContentView: View {
                                           color: .purple.opacity(0.85)) {
                                 showGridPicker = true
                             }
-                            triggerButton("Validate Calibration",
-                                          color: .teal.opacity(0.9)) {
-                                viewModel.startCalibrationValidation()
-                            }
                             triggerButton("Collect Fine-tune Data",
                                           color: .yellow.opacity(0.9),
                                           textColor: .black) {
@@ -139,6 +135,24 @@ struct ContentView: View {
                                           color: .red.opacity(0.85)) {
                                 viewModel.startAccuracyTest()
                             }
+                        }
+                        // Validation and (re-)calibration stay reachable even
+                        // when the gate above is closed — otherwise a poor
+                        // verdict would be an unrecoverable dead end.
+                        if viewModel.calibration != nil {
+                            triggerButton("Validate Calibration",
+                                          color: .teal.opacity(0.9)) {
+                                viewModel.startCalibrationValidation()
+                            }
+                        }
+                        if let reason = viewModel.calibrationBlockReason {
+                            Text(reason)
+                                .font(.caption2)
+                                .foregroundColor(.yellow)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.black.opacity(0.55))
+                                .cornerRadius(6)
                         }
                         triggerButton(viewModel.calibration == nil
                                       ? "Calibrate" : "Re-calibrate",
@@ -255,6 +269,7 @@ struct ContentView: View {
                     FixationStabilityOverlay(
                         controller: f,
                         screenSize: geo.size,
+                        livePrediction: viewModel.gazeScreenPoint,
                         onCancel: { viewModel.cancelFixationExperiment() }
                     )
                 }
@@ -283,19 +298,9 @@ struct ContentView: View {
                     )
                 }
 
-                // Experiment 3: results screen.
-                if let r = viewModel.commTaskResult {
-                    CommunicationTaskResultsView(
-                        result: r,
-                        screenSize: geo.size,
-                        onDismiss: { viewModel.dismissCommunicationTaskResult() },
-                        onRerun: {
-                            viewModel.dismissCommunicationTaskResult()
-                            viewModel.startCommunicationTask()
-                        },
-                        onReplay: { viewModel.replayComposedSentence() }
-                    )
-                }
+                // Experiment 3 has no results screen by design: the run ends
+                // straight back to idle and the numbers are read off the
+                // master log / run bundle instead of the phone.
             }
             .onAppear {
                 viewModel.screenSize = geo.size

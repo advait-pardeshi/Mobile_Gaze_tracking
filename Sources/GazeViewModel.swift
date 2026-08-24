@@ -1,7 +1,7 @@
 import Foundation
 import AVFoundation
 import CoreML
-import MediaPipeTasksVision
+@preconcurrency import MediaPipeTasksVision
 import UIKit
 import simd
 
@@ -53,7 +53,11 @@ final class GazeViewModel: ObservableObject {
     /// Most recent eye-strip tensor (50·200·3 floats in [0,1]). Currently
     /// unused by Stage 4 (we switched to a face-crop CNN); kept around as
     /// diagnostic state and for any future eye-stream ML.
-    @Published var normalizedEyesTensor: [Float] = []
+    ///
+    /// Deliberately **not** `@Published`: nothing observes it, and republishing
+    /// a 30 000-element array on every frame woke every SwiftUI view that
+    /// observes this object, per frame, for nobody.
+    private(set) var normalizedEyesTensor: [Float] = []
     /// Stage 4 input: 224×224 head-pose-normalized + horizontally-mirrored
     /// face crop (the input ETH-XGaze ResNet18 was trained on).
     @Published var normalizedFace: UIImage?
@@ -114,6 +118,10 @@ final class GazeViewModel: ObservableObject {
     @Published var commTaskController: CommunicationTaskController?
     /// Experiment 3 — most recent result.
     @Published var commTaskResult: CommunicationTaskResult?
+    /// Experiment 3 — last finished run. Not `@Published`: it drives no UI,
+    /// because Experiment 3 deliberately has no results screen. Held only so
+    /// the composed sentence can still be replayed after the run.
+    private(set) var lastCommTaskResult: CommunicationTaskResult?
 
     /// Hot-swap model state: short status string surfaced in the HUD / fetch
     /// sheet. Examples: "fetching… 2.1 MB", "loaded p07_GazeNet (12 files)",
@@ -129,17 +137,36 @@ final class GazeViewModel: ObservableObject {
     /// then clears it back to nil on dismissal.
     @Published var modelFetchSuccess: String?
 
-    let cameraManager = CameraManager()
+    // Nonisolated: read from the camera queue and the pipeline queue as well
+    // as the main actor. `intrinsics` is written once during `configure()`
+    // and read thereafter (the file documents it as single-writer).
+    nonisolated let cameraManager = CameraManager()
     // Nonisolated so the camera queue can call detectAsync synchronously
     // without an actor hop (which would let Swift reorder frame submission
     // and trip MediaPipe's monotonic-timestamp requirement).
     nonisolated private let landmarkerService: FaceLandmarkerService?
-    private let headPoseEstimator = HeadPoseEstimator()
-    private let eyeNormalizer = EyeNormalizer()
-    private let faceNormalizer = FaceNormalizer()
-    private let gazeEstimator = GazeEstimator()
 
-    // Stage 6: Kalman smoothing of the post-calibration screen point.
+    /// Stages 2–4. Confined to `processQueue` — see `GazePipeline`.
+    nonisolated private let pipeline = GazePipeline()
+
+    /// The serial queue that owns `pipeline`. `.userInitiated` rather than
+    /// `.userInteractive`: this work must not compete with the main thread
+    /// it was moved off.
+    nonisolated private let processQueue = DispatchQueue(
+        label: "gaze.pipeline", qos: .userInitiated)
+
+    /// Raised for the whole duration of a frame — worker stages *and* the
+    /// main-actor publish. While it is up, arriving frames are dropped rather
+    /// than queued, so latency stays bounded by one frame's work instead of
+    /// growing without limit behind a slow one.
+    nonisolated private let processing = AtomicFlag()
+    nonisolated private let droppedFrames = AtomicCounter()
+
+    nonisolated private let instrumentation = FrameInstrumentation()
+
+    // Stage 6, A/B path only: Kalman smoothing of the post-calibration screen
+    // point. Used iff `PipelineTuning.smoother == .kalman`; the One Euro path
+    // filters upstream of the projection instead and leaves this untouched.
     private let gazeKalman = GazeKalman()
     private var lastKalmanTime: CFTimeInterval?
 
@@ -149,7 +176,35 @@ final class GazeViewModel: ObservableObject {
     /// the session activates.
     private let wordAudio = WordAudioPlayer()
 
-    var gazeEstimatorLoaded: Bool { gazeEstimator.isModelLoaded }
+    var gazeEstimatorLoaded: Bool { pipeline.gazeEstimator.isModelLoaded }
+
+    /// True when the active calibration has been validated and the verdict is
+    /// good enough to hand to an experiment.
+    ///
+    /// The validation step existed but was advisory: experiments were gated on
+    /// `calibration != nil` alone, so a `poor` verdict could be dismissed and
+    /// the run would proceed. In the logged data that produced a 9×9 run with
+    /// 0 % hits across all 324 trials and ~250 pt error at every eccentricity —
+    /// a whole session spent measuring a broken fit. The gate is now binding.
+    var isCalibrationUsable: Bool {
+        guard calibration != nil else { return false }
+        switch lastValidationVerdict {
+        case .good, .marginal: return true
+        case .poor, .incomplete, nil: return false
+        }
+    }
+
+    /// Why the experiment triggers are unavailable, for the HUD. Nil when
+    /// they're available.
+    var calibrationBlockReason: String? {
+        guard calibration != nil else { return "Calibrate first" }
+        switch lastValidationVerdict {
+        case .good, .marginal: return nil
+        case nil: return "Validate calibration first"
+        case .incomplete: return "Validation incomplete — re-validate"
+        case .poor: return "Calibration poor — re-calibrate"
+        }
+    }
 
     /// True when no calibration / validation / experiment run is in progress
     /// and no results screen is up — i.e. the main screen owns the display.
@@ -200,6 +255,7 @@ final class GazeViewModel: ObservableObject {
 
     func stop() {
         cameraManager.stop()
+        instrumentation.flush()
     }
 
     /// Begin a 9-dot calibration session. Requires `screenSize` to be set
@@ -216,6 +272,7 @@ final class GazeViewModel: ObservableObject {
         self.gazeScreenPoint = nil
         self.gazeKalman.reset()
         self.lastKalmanTime = nil
+        self.resetSmoothers()
         self.validationResult = nil
         self.validationController = nil
         self.lastValidationVerdict = nil
@@ -419,7 +476,12 @@ final class GazeViewModel: ObservableObject {
                                             audio: wordAudio)
         c.onComplete = { [weak self] r in
             guard let self = self else { return }
-            self.commTaskResult = r
+            // Experiment 3 shows no results screen: the run ends straight
+            // back to the idle view. The result is still logged and bundled
+            // exactly as before — only the on-device presentation is gone,
+            // so the data is read off the master log rather than the phone.
+            self.lastCommTaskResult = r
+            self.commTaskResult = nil
             self.commTaskController = nil
             do {
                 _ = try r.appendToMasterLog()
@@ -427,6 +489,7 @@ final class GazeViewModel: ObservableObject {
                 print("experiment3 log append failed: \(error)")
             }
         }
+        self.lastCommTaskResult = nil
         self.commTaskResult = nil
         self.commTaskController = c
         c.start()
@@ -441,9 +504,11 @@ final class GazeViewModel: ObservableObject {
         commTaskResult = nil
     }
 
-    /// Speak the sentence the participant composed, from the results screen.
+    /// Speak the sentence the participant composed. No longer reachable from
+    /// a results screen (Experiment 3 has none); kept so the last run's
+    /// sentence can still be replayed if a caller wants it.
     func replayComposedSentence() {
-        guard let r = commTaskResult else { return }
+        guard let r = commTaskResult ?? lastCommTaskResult else { return }
         wordAudio.speakSentence(r.composedSentence)
     }
 
@@ -491,10 +556,16 @@ final class GazeViewModel: ObservableObject {
 
                 do {
                     let compiledURL = try await MLModel.compileModel(at: pkgURL)
-                    let inputName = try self.gazeEstimator.replace(
-                        compiledModelAt: compiledURL,
-                        sourceLabel: pkgURL.lastPathComponent
-                    )
+                    // The swap happens on the pipeline queue even though the
+                    // camera is stopped: a frame already dispatched there
+                    // would otherwise be mid-`prediction` while the model is
+                    // replaced under it.
+                    let inputName = try self.processQueue.sync {
+                        try self.pipeline.gazeEstimator.replace(
+                            compiledModelAt: compiledURL,
+                            sourceLabel: pkgURL.lastPathComponent
+                        )
+                    }
                     self.modelSource = pkgURL.lastPathComponent
                     self.modelFetchStatus = "Loaded \(pkgURL.lastPathComponent) (input=\(inputName))."
                     self.modelFetchSuccess = pkgURL.lastPathComponent
@@ -509,6 +580,15 @@ final class GazeViewModel: ObservableObject {
                 self.modelFetchInFlight = false
             }
         }
+    }
+
+    /// Clear every smoother's history. Called on track loss and whenever a
+    /// new calibration run starts, so a filter can't slew in from a state
+    /// that belongs to a different fit.
+    private func resetSmoothers() {
+        gazeKalman.reset()
+        lastKalmanTime = nil
+        processQueue.async { self.pipeline.reset() }
     }
 
     private func recordFrameTime() {
@@ -558,213 +638,306 @@ extension GazeViewModel: CameraManagerDelegate {
 }
 
 extension GazeViewModel: FaceLandmarkerServiceDelegate {
+
+    /// MediaPipe landmark callback. Runs on MediaPipe's own thread.
+    ///
+    /// Two things happen here and nothing else: backpressure, and a hand-off
+    /// to `processQueue`. Everything the old implementation did inline —
+    /// PnP, two warps, CoreML, projection — now runs off the main actor in
+    /// `GazePipeline`.
     nonisolated func faceLandmarkerService(_ service: FaceLandmarkerService,
                                            didDetect result: FaceLandmarkerResult,
                                            timestampMs: Int) {
+        let arrival = CACurrentMediaTime()
+
+        // Backpressure. If a frame is still in flight, this one is *dropped*,
+        // never queued: its buffer is drained out of the cache so it can't sit
+        // there holding an IOSurface, and we return. Queuing instead would
+        // trade a dropped frame for unbounded latency — and a gaze estimate
+        // that arrives 200 ms late is worse than no estimate at all, because
+        // it is indistinguishable from a current one in the log.
+        guard processing.tryAcquire() else {
+            _ = pendingBuffers.take(timestampMs: timestampMs)
+            droppedFrames.increment()
+            return
+        }
+
         let faces = result.faceLandmarks
         let firstFace = faces.first ?? []
-        Task { @MainActor in
-            self.faceCount = faces.count
-            self.landmarks = firstFace
+        let pb = pendingBuffers.take(timestampMs: timestampMs)
+        let intr = cameraManager.intrinsics
+        let dropped = droppedFrames.drain()
 
-            // Stage 2: head pose.
-            var pose: HeadPose?
-            if firstFace.isEmpty {
-                self.headPoseFailureReason = "no face"
-            } else if let intr = self.cameraManager.intrinsics {
-                if self.intrinsicsSummary == nil {
-                    self.intrinsicsSummary = String(
-                        format: "fx=%.0f cx=%.0f img=%.0fx%.0f",
-                        intr.fx, intr.cx, intr.imageWidth, intr.imageHeight
-                    )
-                }
-                pose = self.headPoseEstimator.estimate(
-                    landmarks: firstFace, intrinsics: intr
-                )
-                self.headPoseFailureReason = (pose == nil)
-                    ? self.headPoseEstimator.lastFailureReason
-                    : nil
-            } else {
-                self.headPoseFailureReason = "no intrinsics"
+        processQueue.async { [self] in
+            let out = pipeline.process(landmarks: firstFace,
+                                       faceCount: faces.count,
+                                       pixelBuffer: pb,
+                                       intrinsics: intr,
+                                       timestampMs: timestampMs,
+                                       arrival: arrival,
+                                       droppedSince: dropped)
+            let workerDone = CACurrentMediaTime()
+            Task { @MainActor in
+                self.publish(out, workerDone: workerDone)
+                // Released only after the publish completes, so the flag
+                // measures the true end-to-end occupancy of the pipeline.
+                self.processing.release()
             }
-            self.headPose = pose
-
-            // Stage 3: head-pose-normalized eye strip. Always drain the buffer
-            // for this timestamp so it doesn't sit in the cache; only run the
-            // warp if we have a valid pose + intrinsics.
-            let pb = self.pendingBuffers.take(timestampMs: timestampMs)
-            if let pose = pose,
-               let intr = self.cameraManager.intrinsics,
-               let pb = pb,
-               let out = self.eyeNormalizer.normalize(
-                   pixelBuffer: pb,
-                   headPose: pose,
-                   intrinsics: intr
-               ) {
-                self.normalizedEyes = out.combined
-                self.normalizedEyesTensor = out.tensorRGB
-
-                // Stage 4: ETH-XGaze ResNet18 takes a 224×224 normalized
-                // FACE crop. Run that warp in parallel with the eye strip
-                // so we keep the eye-strip viz from Phase 3.
-                let eL = pose.rotation * CanonicalFaceModel.leftEyeCenter3D  + pose.translation
-                let eR = pose.rotation * CanonicalFaceModel.rightEyeCenter3D + pose.translation
-                let eyeMid = (eL + eR) * 0.5
-                self.gazeOriginCam = eyeMid
-                let face = self.faceNormalizer.normalize(
-                    pixelBuffer: pb,
-                    headPose: pose,
-                    intrinsics: intr
-                )
-                if let face = face {
-                    self.normalizedFace = face.image
-                    self.gaze = self.gazeEstimator.estimate(
-                        tensorRGB: face.tensorRGB,
-                        normalizationRotation: face.rotation
-                    )
-                } else {
-                    self.normalizedFace = nil
-                    self.gaze = nil
-                }
-
-                // Stage 5: feed calibration and/or project to screen coords.
-                if let g = self.gaze {
-                    // Per-frame diagnostics for the experiment run logs: the
-                    // same frame at raw / projected stages so noise can be
-                    // attributed off-device. This build has no upstream
-                    // smoother, so the `filt_*` / `eye_cam_*_f_mm` columns
-                    // stay empty by design.
-                    let toDeg = 180.0 / Double.pi
-                    var diag = ExperimentRunLog.Diagnostics()
-                    diag.rawPitchDeg = g.pitch * toDeg
-                    diag.rawYawDeg = g.yaw * toDeg
-                    diag.eyeCam = eyeMid
-                    if let cal = self.calibration, self.screenSize.width > 0 {
-                        let pRaw = cal.predict(gazeCam: g.gazeCam)
-                        diag.rawPredX = Double(self.screenSize.width) * 0.5 + pRaw.x
-                        diag.rawPredY = Double(self.screenSize.height) * 0.5 + pRaw.y
-                    }
-
-                    // Iris-diameter proxy for the run logs. Measured only
-                    // while an experiment is recording — it's an extra
-                    // landmark pass on the gaze path otherwise wasted.
-                    let pupil: PupilMeasure.Diameters
-                    if self.gridExperimentController != nil
-                        || self.fixationController != nil
-                        || self.commTaskController != nil
-                        || self.validationController != nil {
-                        pupil = PupilMeasure.diameters(
-                            landmarks: firstFace,
-                            imageSize: CGSize(width: intr.imageWidth,
-                                              height: intr.imageHeight))
-                    } else {
-                        pupil = .init(leftPx: .nan, rightPx: .nan)
-                    }
-
-                    if let c = self.calibrationController {
-                        c.ingest(gazeCam: g.gazeCam)
-                        if c.phase == .complete, let r = c.result {
-                            self.calibration = r
-                            self.calibrationController = nil
-                            // Validation follows calibration automatically:
-                            // the fit is never handed to an experiment until
-                            // it has been checked against all 9 dots.
-                            self.startCalibrationValidation()
-                        }
-                    }
-                    if let a = self.accuracyController {
-                        a.ingest(gazeCam: g.gazeCam, headPose: pose)
-                        if a.phase == .complete, let r = a.result {
-                            self.accuracyResult = r
-                            self.accuracyController = nil
-                            // Cumulative log: append this run's section to
-                            // accuracy_log.csv so every run is preserved
-                            // even if the user doesn't tap Export CSV.
-                            do {
-                                _ = try r.appendToMasterLog()
-                            } catch {
-                                print("accuracy log append failed: \(error)")
-                            }
-                        }
-                    }
-                    if let ge = self.gridExperimentController {
-                        ge.ingest(gazeCam: g.gazeCam,
-                                  headPose: pose,
-                                  faceImage: face?.image,
-                                  normalizationRotation: face?.rotation,
-                                  eyePositionCam: eyeMid,
-                                  pupilDiameters: pupil,
-                                  diagnostics: diag)
-                        if ge.phase == .complete, let r = ge.result {
-                            self.gridExperimentResult = r
-                            self.gridExperimentController = nil
-                            do {
-                                _ = try r.appendToMasterLog()
-                            } catch {
-                                print("grid experiment log append failed: \(error)")
-                            }
-                        }
-                    }
-                    if let cal = self.calibration, self.screenSize.width > 0 {
-                        let p = cal.predict(gazeCam: g.gazeCam)
-                        if p.x.isFinite && p.y.isFinite {
-                            let raw = CGPoint(
-                                x: self.screenSize.width  * 0.5 + p.x,
-                                y: self.screenSize.height * 0.5 + p.y
-                            )
-                            // Stage 6: Kalman smoothing with real per-frame dt.
-                            let now = CACurrentMediaTime()
-                            let dt = self.lastKalmanTime.map { now - $0 } ?? 0
-                            self.lastKalmanTime = now
-                            let smoothed =
-                                self.gazeKalman.update(measurement: raw, dt: dt)
-                            self.gazeScreenPoint = smoothed
-
-                            // Validation and Experiments 2/3 all consume the
-                            // same Kalman-smoothed, screen-absolute point
-                            // that's drawn on screen, so what the participant
-                            // sees and what gets scored are identical.
-                            //
-                            // None of these harvest their result here: each
-                            // finishes off the gaze path (timer or button) and
-                            // reports through its `onComplete` callback, set
-                            // when the run was started.
-                            self.validationController?.ingest(
-                                predictionScreenAbs: smoothed,
-                                gazeCam: g.gazeCam,
-                                headPose: pose,
-                                pupilDiameters: pupil,
-                                diagnostics: diag)
-                            self.fixationController?.ingest(
-                                predictionScreenAbs: smoothed,
-                                gazeCam: g.gazeCam,
-                                headPose: pose,
-                                pupilDiameters: pupil,
-                                diagnostics: diag)
-                            self.commTaskController?.ingest(
-                                predictionScreenAbs: smoothed,
-                                gazeCam: g.gazeCam,
-                                headPose: pose,
-                                pupilDiameters: pupil,
-                                diagnostics: diag)
-                        }
-                    }
-                }
-            } else {
-                self.gaze = nil
-                self.gazeOriginCam = nil
-                self.normalizedFace = nil
-                // Track lost — reset filter so re-acquisition doesn't snap from stale state.
-                self.gazeKalman.reset()
-                self.lastKalmanTime = nil
-            }
-
-            self.recordFrameTime()
         }
     }
 
     nonisolated func faceLandmarkerService(_ service: FaceLandmarkerService,
                                            didFailWith error: Error) {
         print("[Gaze] Detection error: \(error)")
+    }
+}
+
+// MARK: - Main-actor publish
+
+extension GazeViewModel {
+
+    /// The only part of the per-frame path still on the main actor:
+    /// assign the `@Published` properties, project the (already-filtered)
+    /// gaze through the calibration, and feed the experiment controllers —
+    /// all of which are main-actor `ObservableObject`s driving the UI.
+    ///
+    /// The projection itself is two divides and a nearest-target scan; it
+    /// stays here so the controllers see a point computed from exactly the
+    /// calibration that is live at publish time.
+    fileprivate func publish(_ out: GazePipeline.Output,
+                             workerDone: CFTimeInterval) {
+        var timing = out.timing
+
+        faceCount = out.faceCount
+        landmarks = out.landmarks
+        headPose = out.poseFiltered
+        headPoseFailureReason = out.poseFailureReason
+        if let s = out.intrinsicsSummary { intrinsicsSummary = s }
+        if imageSize == .zero, cameraManager.imageWidth > 0 {
+            imageSize = CGSize(width: cameraManager.imageWidth,
+                               height: cameraManager.imageHeight)
+        }
+
+        // Debug crops: throttled to every Nth frame. The eye strip was not
+        // even computed on the other frames (see `GazePipeline`); the face
+        // crop was, because Experiment 1's fine-tune collector consumes it.
+        if out.publishDebugCrops {
+            if let strip = out.eyeStrip { normalizedEyes = strip }
+            if let tensor = out.eyeTensor { normalizedEyesTensor = tensor }
+            normalizedFace = out.faceImage
+        }
+
+        gazeOriginCam = out.eyeMidFiltered ?? out.eyeMidRaw
+        gaze = out.filteredEstimate
+
+        guard let filtered = out.filteredEstimate else {
+            // No usable estimate this frame — drop the dot rather than leave
+            // a stale one on screen asserting a gaze we do not have.
+            gazeScreenPoint = nil
+            gazeKalman.reset()
+            lastKalmanTime = nil
+            recordFrameTime()
+            finishTiming(&timing, workerDone: workerDone)
+            return
+        }
+
+        let toDeg = 180.0 / Double.pi
+        let halfW = Double(screenSize.width) * 0.5
+        let halfH = Double(screenSize.height) * 0.5
+        let haveScreen = screenSize.width > 0
+
+        // ---- Two streams, logged separately ------------------------------
+        //
+        // `raw*` is populated only when the CNN actually ran this frame. On a
+        // blink-gated frame every raw field stays NaN rather than repeating
+        // the held value: a duplicate in the raw stream would understate its
+        // variance, and Experiment 2's whole job is to measure that variance.
+        var diag = ExperimentRunLog.Diagnostics()
+        diag.ear = out.ear.mean
+        diag.blinkHeld = out.blinkHeld
+        diag.eyeCam = out.eyeMidRaw ?? simd_double3(.nan, .nan, .nan)
+        diag.filtPitchDeg = filtered.pitch * toDeg
+        diag.filtYawDeg = filtered.yaw * toDeg
+
+        var rawScreenPoint: CGPoint?
+        if let raw = out.rawEstimate {
+            diag.rawPitchDeg = raw.pitch * toDeg
+            diag.rawYawDeg = raw.yaw * toDeg
+            if let cal = calibration, haveScreen {
+                let p = cal.predict(gazeCam: raw.gazeCam)
+                if p.x.isFinite, p.y.isFinite {
+                    diag.rawPredX = halfW + p.x
+                    diag.rawPredY = halfH + p.y
+                    rawScreenPoint = CGPoint(x: diag.rawPredX, y: diag.rawPredY)
+                }
+            }
+        }
+
+        // Iris-diameter proxy for the run logs. Measured only while an
+        // experiment is recording — it's an extra landmark pass on the gaze
+        // path otherwise wasted.
+        let pupil: PupilMeasure.Diameters
+        if let intr = cameraManager.intrinsics,
+           gridExperimentController != nil || fixationController != nil
+            || commTaskController != nil || validationController != nil {
+            pupil = PupilMeasure.diameters(
+                landmarks: out.landmarks,
+                imageSize: CGSize(width: intr.imageWidth,
+                                  height: intr.imageHeight))
+        } else {
+            pupil = .init(leftPx: .nan, rightPx: .nan)
+        }
+
+        // ---- Calibration / Experiment 1 / accuracy: raw stream -----------
+        //
+        // These fit or score on the unsmoothed estimate, exactly as before
+        // this branch: `CalibrationController` takes per-dot medians, which
+        // is its own (and better) noise rejection, and pre-smoothing its
+        // input would bias the fit toward whatever the filter was doing.
+        if let raw = out.rawEstimate, let pose = out.poseFiltered {
+            if let c = calibrationController {
+                c.ingest(gazeCam: raw.gazeCam)
+                if c.phase == .complete, let r = c.result {
+                    calibration = r
+                    calibrationController = nil
+                    resetSmoothers()
+                    // Validation follows calibration automatically: the fit is
+                    // never handed to an experiment until it has been checked
+                    // against all 9 dots.
+                    startCalibrationValidation()
+                }
+            }
+            if let a = accuracyController {
+                a.ingest(gazeCam: raw.gazeCam, headPose: pose)
+                if a.phase == .complete, let r = a.result {
+                    accuracyResult = r
+                    accuracyController = nil
+                    do { _ = try r.appendToMasterLog() }
+                    catch { print("accuracy log append failed: \(error)") }
+                }
+            }
+            if let ge = gridExperimentController {
+                ge.ingest(gazeCam: raw.gazeCam,
+                          headPose: pose,
+                          faceImage: out.faceImage,
+                          normalizationRotation: out.faceRotation,
+                          eyePositionCam: out.eyeMidRaw ?? simd_double3(),
+                          pupilDiameters: pupil,
+                          diagnostics: diag)
+                if ge.phase == .complete, let r = ge.result {
+                    gridExperimentResult = r
+                    gridExperimentController = nil
+                    do { _ = try r.appendToMasterLog() }
+                    catch { print("grid experiment log append failed: \(error)") }
+                }
+            }
+        }
+
+        // ---- Projection of the filtered stream ---------------------------
+        guard let cal = calibration, haveScreen else {
+            gazeScreenPoint = nil
+            recordFrameTime()
+            finishTiming(&timing, workerDone: workerDone, diag: diag)
+            return
+        }
+        let p = cal.predict(gazeCam: filtered.gazeCam)
+        guard p.x.isFinite, p.y.isFinite else {
+            recordFrameTime()
+            finishTiming(&timing, workerDone: workerDone, diag: diag)
+            return
+        }
+        let projected = CGPoint(x: halfW + p.x, y: halfH + p.y)
+
+        // In the One Euro configuration the smoothing already happened
+        // upstream, on (pitch, yaw), so this point is final. In the Kalman
+        // A/B configuration the pipeline passed the angles through untouched
+        // and the old post-projection filter runs here instead.
+        let rendered: CGPoint
+        switch PipelineTuning.smoother {
+        case .oneEuro:
+            rendered = projected
+        case .kalman:
+            let now = CACurrentMediaTime()
+            let dt = lastKalmanTime.map { now - $0 } ?? 0
+            lastKalmanTime = now
+            rendered = gazeKalman.update(measurement: projected, dt: dt)
+        }
+        gazeScreenPoint = rendered
+        diag.filtPredX = Double(rendered.x)
+        diag.filtPredY = Double(rendered.y)
+
+        guard let pose = out.poseFiltered else {
+            recordFrameTime()
+            finishTiming(&timing, workerDone: workerDone, diag: diag)
+            return
+        }
+
+        // ---- Experiment 2 --------------------------------------------------
+        //
+        // Which stream is scored is `PipelineTuning.fixationScoredStream`,
+        // and it changes what the result means:
+        //
+        //   .raw       the per-frame CNN output, no temporal smoothing and no
+        //              blink hold — the estimator's noise floor. Blink-gated
+        //              frames deliver nothing, so a held-over estimate can
+        //              never enter the scatter as a zero-variance sample.
+        //   .filtered  the same point the cursor is drawn from, post One Euro
+        //              (or Kalman). Reports what the user actually sees and
+        //              acts on; will always look tighter than .raw, because
+        //              shrinking that variance is the smoother's whole job.
+        //
+        // Either way the *other* stream still rides along in `diag`, so an
+        // off-device analysis can compare the two after the fact.
+        switch PipelineTuning.fixationScoredStream {
+        case .raw:
+            if let rawPoint = rawScreenPoint, let raw = out.rawEstimate {
+                fixationController?.ingest(predictionScreenAbs: rawPoint,
+                                           gazeCam: raw.gazeCam,
+                                           headPose: pose,
+                                           pupilDiameters: pupil,
+                                           diagnostics: diag)
+            }
+        case .filtered:
+            fixationController?.ingest(predictionScreenAbs: rendered,
+                                       gazeCam: filtered.gazeCam,
+                                       headPose: pose,
+                                       pupilDiameters: pupil,
+                                       diagnostics: diag)
+        }
+
+        // ---- Validation and Experiment 3: filtered stream ----------------
+        //
+        // Both of these are interaction tasks scored on dwell: what matters
+        // is whether the participant could land the dot they can see, so they
+        // consume the same point that is rendered.
+        validationController?.ingest(predictionScreenAbs: rendered,
+                                     gazeCam: filtered.gazeCam,
+                                     headPose: pose,
+                                     pupilDiameters: pupil,
+                                     diagnostics: diag)
+        commTaskController?.ingest(predictionScreenAbs: rendered,
+                                   gazeCam: filtered.gazeCam,
+                                   headPose: pose,
+                                   pupilDiameters: pupil,
+                                   diagnostics: diag)
+
+        recordFrameTime()
+        finishTiming(&timing, workerDone: workerDone, diag: diag)
+    }
+
+    /// Stamp the publish-side timings and hand the row to the logger.
+    private func finishTiming(_ timing: inout FrameInstrumentation.Row,
+                              workerDone: CFTimeInterval,
+                              diag: ExperimentRunLog.Diagnostics? = nil) {
+        let now = CACurrentMediaTime()
+        timing.publish = now
+        timing.dtPublish = now - workerDone
+        if let d = diag {
+            timing.rawPredX = d.rawPredX
+            timing.rawPredY = d.rawPredY
+            timing.filtPredX = d.filtPredX
+            timing.filtPredY = d.filtPredY
+        }
+        instrumentation.record(timing)
     }
 }

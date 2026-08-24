@@ -34,3 +34,17 @@ struct HeadPose {
         translation: simd_double3(0, 0, 600)
     )
 }
+
+extension HeadPose {
+    /// `rotation` as a unit quaternion.
+    ///
+    /// Used by the head-pose One Euro filter and by the instrumentation log:
+    /// both need a wrap-free, gimbal-free representation, which the Euler
+    /// decomposition above is not.
+    var quaternion: simd_quatd { simd_quatd(rotation).normalized }
+
+    /// Same translation, rotation replaced by `q`.
+    func withRotation(_ q: simd_quatd) -> HeadPose {
+        HeadPose(rotation: simd_double3x3(q.normalized), translation: translation)
+    }
+}

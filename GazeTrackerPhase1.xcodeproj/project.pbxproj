@@ -11,6 +11,7 @@
 		01327E020C87251359052A69 /* GazeKalman.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03E639E8EF24538B452E1321 /* GazeKalman.swift */; };
 		05100573B8EB9BCAF03820C4 /* FaceNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5ADBC7E85386A56AB8AB9DF3 /* FaceNormalizer.swift */; };
 		06C808A42EE4DF806FCB8168 /* GazeEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78F781E3E77972A8BD9FFA69 /* GazeEstimator.swift */; };
+		0B0DB6F8423C4B041581198C /* PipelineTuning.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC7C82ABC9E710066E6F7798 /* PipelineTuning.swift */; };
 		0BDCA70A3C2E5F3E01E2A6B0 /* CameraIntrinsics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C43570287F3CEFE9CE42A17 /* CameraIntrinsics.swift */; };
 		0C14DBC26B3DCA2D30EE3E76 /* VisualAngle.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E35EAB03B11D95B1DEC647 /* VisualAngle.swift */; };
 		116A33DD07A7D1ADA6541063 /* word_home.png in Resources */ = {isa = PBXBuildFile; fileRef = EB2E45585F491CFD00B7D207 /* word_home.png */; };
@@ -27,16 +28,20 @@
 		4D14C1039BD632539BFD7AF5 /* HeadPoseEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E86DB958BAADE7896E315E7 /* HeadPoseEstimator.swift */; };
 		50954C1A25EA818098FEF35A /* CameraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 583BCAAFD4957B7481E557A7 /* CameraManager.swift */; };
 		51B2B8322BDB38D53ED38AAF /* PupilMeasure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74ABE3282621F7CE88F05C25 /* PupilMeasure.swift */; };
+		5C250A398F89278368612C02 /* OneEuroFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99B8D60DB309857E023FF8D7 /* OneEuroFilter.swift */; };
 		5CD013C3016D0FDF88221293 /* CalibrationValidationModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 645DD6A2F31649729BA8F151 /* CalibrationValidationModel.swift */; };
 		5F9DA1354E9A2A2AA0F8E4B7 /* SwiftTasksVision in Frameworks */ = {isa = PBXBuildFile; productRef = 8D3139C257EE27941E7D222B /* SwiftTasksVision */; };
 		65C9AC846BCFC8AE0279B852 /* CalibrationValidationOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD029FB9188D3DC848D13057 /* CalibrationValidationOverlay.swift */; };
 		66FBC06FE3676BF42B3FFB0F /* word_please.png in Resources */ = {isa = PBXBuildFile; fileRef = 493548D3204920280A3E5425 /* word_please.png */; };
 		6848F8F9D2CFCA7817A46D5A /* EyeNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 505624E3304DE5D810372FCA /* EyeNormalizer.swift */; };
 		697542FB0C65B987A3F9B276 /* word_drink.png in Resources */ = {isa = PBXBuildFile; fileRef = 2EBA77338D010B2DCC9DCC6F /* word_drink.png */; };
+		760D3C0D6CF4CED650AD84B9 /* EyeAspectRatio.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0E660B3E8A0142E32442589 /* EyeAspectRatio.swift */; };
 		76AC54CE2DBA26AAFEB3D76E /* CalibrationOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5873DF771068A2B54B64377 /* CalibrationOverlay.swift */; };
 		76DBA3CF70A97303EC350FD6 /* word_help.png in Resources */ = {isa = PBXBuildFile; fileRef = 928FAD9A5FAB00CD79C20C50 /* word_help.png */; };
 		7905DA3BBB39CF01BB251A9C /* FixationStabilityOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09AFEAD2047862ABBBCB37C0 /* FixationStabilityOverlay.swift */; };
 		7C9549AFEC4C96EDACFBA413 /* GridExperimentModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E1E272AE0EFA7494D51D414 /* GridExperimentModel.swift */; };
+		88362FC0673CFC8BABC9D797 /* FrameInstrumentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B135D60995167D7DD63D3A /* FrameInstrumentation.swift */; };
+		8C798B7670AB98708851BE19 /* GazePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D63770B3A293C3FE45A33EF /* GazePipeline.swift */; };
 		8FBED4002BCB1874072A0A83 /* CanonicalFaceModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73B1874BE0D21D2A9CF64DD0 /* CanonicalFaceModel.swift */; };
 		909DFC3E563279C119025962 /* DirectoryZip.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEA5877C12BEE3DAA471DEBB /* DirectoryZip.swift */; };
 		955C4393746B9C9FFB482291 /* CalibrationModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364A21FA7890178E3EFF6FC7 /* CalibrationModel.swift */; };
@@ -77,6 +82,7 @@
 		2EBA77338D010B2DCC9DCC6F /* word_drink.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = word_drink.png; sourceTree = "<group>"; };
 		364A21FA7890178E3EFF6FC7 /* CalibrationModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationModel.swift; sourceTree = "<group>"; };
 		3CA57E2070EE82B1AA39C5F4 /* CalibrationValidationResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationValidationResultsView.swift; sourceTree = "<group>"; };
+		3D63770B3A293C3FE45A33EF /* GazePipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazePipeline.swift; sourceTree = "<group>"; };
 		3E1E272AE0EFA7494D51D414 /* GridExperimentModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridExperimentModel.swift; sourceTree = "<group>"; };
 		4320F49F1370643C3F4CAC94 /* WordAudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordAudioPlayer.swift; sourceTree = "<group>"; };
 		4547AE62E847F69CFC11B9B4 /* FineTuneDataCollector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FineTuneDataCollector.swift; sourceTree = "<group>"; };
@@ -84,10 +90,10 @@
 		4E86DB958BAADE7896E315E7 /* HeadPoseEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadPoseEstimator.swift; sourceTree = "<group>"; };
 		505624E3304DE5D810372FCA /* EyeNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EyeNormalizer.swift; sourceTree = "<group>"; };
 		52865C7C7957395644C89FAA /* CameraPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreview.swift; sourceTree = "<group>"; };
-		54F9E1A4557B6A85056B0EAB /* GazeTrackerPhase1.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = GazeTrackerPhase1.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		54F9E1A4557B6A85056B0EAB /* GazeTrackerPhase1.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GazeTrackerPhase1.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		583BCAAFD4957B7481E557A7 /* CameraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraManager.swift; sourceTree = "<group>"; };
 		5ADBC7E85386A56AB8AB9DF3 /* FaceNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceNormalizer.swift; sourceTree = "<group>"; };
-		5B6DA760CDFED09548347BC8 /* GazeNet.mlpackage */ = {isa = PBXFileReference; path = GazeNet.mlpackage; sourceTree = "<group>"; };
+		5B6DA760CDFED09548347BC8 /* GazeNet.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = GazeNet.mlpackage; sourceTree = "<group>"; };
 		645DD6A2F31649729BA8F151 /* CalibrationValidationModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationValidationModel.swift; sourceTree = "<group>"; };
 		65D928153BE9BD91812D2B91 /* GazeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeViewModel.swift; sourceTree = "<group>"; };
 		6D5A2753BC76C5946CE2A3D8 /* AccuracyTestOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccuracyTestOverlay.swift; sourceTree = "<group>"; };
@@ -96,7 +102,9 @@
 		78F781E3E77972A8BD9FFA69 /* GazeEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeEstimator.swift; sourceTree = "<group>"; };
 		7C05D0F63752EF4DB57AB67E /* word_want.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = word_want.png; sourceTree = "<group>"; };
 		7C43570287F3CEFE9CE42A17 /* CameraIntrinsics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraIntrinsics.swift; sourceTree = "<group>"; };
+		91B135D60995167D7DD63D3A /* FrameInstrumentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameInstrumentation.swift; sourceTree = "<group>"; };
 		928FAD9A5FAB00CD79C20C50 /* word_help.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = word_help.png; sourceTree = "<group>"; };
+		99B8D60DB309857E023FF8D7 /* OneEuroFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OneEuroFilter.swift; sourceTree = "<group>"; };
 		9E791EC9C454537433EF649E /* CommunicationTaskOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunicationTaskOverlay.swift; sourceTree = "<group>"; };
 		A18927647576F9918BCB5F7A /* HeadPose.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadPose.swift; sourceTree = "<group>"; };
 		AF7224564BD85E7637B82845 /* word_more.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = word_more.png; sourceTree = "<group>"; };
@@ -107,15 +115,17 @@
 		C612AE2C25FC2467A8E3B657 /* FaceLandmarkerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceLandmarkerService.swift; sourceTree = "<group>"; };
 		C8E35EAB03B11D95B1DEC647 /* VisualAngle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualAngle.swift; sourceTree = "<group>"; };
 		C9F1B9EBC156918B9AF1ECED /* word_i.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = word_i.png; sourceTree = "<group>"; };
+		CC7C82ABC9E710066E6F7798 /* PipelineTuning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PipelineTuning.swift; sourceTree = "<group>"; };
 		CF6B4F7A24311926D439609C /* ScreenMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenMapper.swift; sourceTree = "<group>"; };
 		CFF5A12D9A8B0783FF155E13 /* word_water.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = word_water.png; sourceTree = "<group>"; };
+		D0E660B3E8A0142E32442589 /* EyeAspectRatio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EyeAspectRatio.swift; sourceTree = "<group>"; };
 		D2CD8DB62D626F78F4C34A19 /* AccuracyResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccuracyResultsView.swift; sourceTree = "<group>"; };
 		D53C89B50702D93998EBAACA /* ModelUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelUpdater.swift; sourceTree = "<group>"; };
 		D76CE4A02F2703BD1FB38B04 /* GridExperimentResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridExperimentResultsView.swift; sourceTree = "<group>"; };
 		D83CC10C266C3916A32B9ABC /* ExperimentRunLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExperimentRunLog.swift; sourceTree = "<group>"; };
 		E22C71CBFC3BF9792B606A1A /* CommunicationTaskModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunicationTaskModel.swift; sourceTree = "<group>"; };
 		E8988C78E3C62C74978BC716 /* CommunicationTaskResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunicationTaskResultsView.swift; sourceTree = "<group>"; };
-		EA552E7FAF3D7111A5B581B6 /* face_landmarker.task */ = {isa = PBXFileReference; path = face_landmarker.task; sourceTree = "<group>"; };
+		EA552E7FAF3D7111A5B581B6 /* face_landmarker.task */ = {isa = PBXFileReference; lastKnownFileType = file; path = face_landmarker.task; sourceTree = "<group>"; };
 		EB2E45585F491CFD00B7D207 /* word_home.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = word_home.png; sourceTree = "<group>"; };
 		F06E2B88781039C0259D29D0 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		F71C4340449C5DA3358CFAA6 /* word_to.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = word_to.png; sourceTree = "<group>"; };
@@ -211,6 +221,7 @@
 				F06E2B88781039C0259D29D0 /* ContentView.swift */,
 				BEA5877C12BEE3DAA471DEBB /* DirectoryZip.swift */,
 				D83CC10C266C3916A32B9ABC /* ExperimentRunLog.swift */,
+				D0E660B3E8A0142E32442589 /* EyeAspectRatio.swift */,
 				505624E3304DE5D810372FCA /* EyeNormalizer.swift */,
 				C612AE2C25FC2467A8E3B657 /* FaceLandmarkerService.swift */,
 				5ADBC7E85386A56AB8AB9DF3 /* FaceNormalizer.swift */,
@@ -218,8 +229,10 @@
 				B5E4569049F3FD53727F242E /* FixationStabilityModel.swift */,
 				09AFEAD2047862ABBBCB37C0 /* FixationStabilityOverlay.swift */,
 				2798B0B5EA624E9DCCA08739 /* FixationStabilityResultsView.swift */,
+				91B135D60995167D7DD63D3A /* FrameInstrumentation.swift */,
 				78F781E3E77972A8BD9FFA69 /* GazeEstimator.swift */,
 				03E639E8EF24538B452E1321 /* GazeKalman.swift */,
+				3D63770B3A293C3FE45A33EF /* GazePipeline.swift */,
 				030C546D6AE8BBD4C9498CC6 /* GazeTrackerApp.swift */,
 				65D928153BE9BD91812D2B91 /* GazeViewModel.swift */,
 				3E1E272AE0EFA7494D51D414 /* GridExperimentModel.swift */,
@@ -229,6 +242,8 @@
 				4E86DB958BAADE7896E315E7 /* HeadPoseEstimator.swift */,
 				02060C1A66FA14AF17A98957 /* ModelFetchSheet.swift */,
 				D53C89B50702D93998EBAACA /* ModelUpdater.swift */,
+				99B8D60DB309857E023FF8D7 /* OneEuroFilter.swift */,
+				CC7C82ABC9E710066E6F7798 /* PipelineTuning.swift */,
 				74ABE3282621F7CE88F05C25 /* PupilMeasure.swift */,
 				CF6B4F7A24311926D439609C /* ScreenMapper.swift */,
 				1FFA4B4F98DC66DE71F805CD /* SolvePnP.swift */,
@@ -271,7 +286,6 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					38AAC1A5965B43AF5FCA39D4 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -344,6 +358,7 @@
 				39DAFD3A99F860A67FB9CB4E /* ContentView.swift in Sources */,
 				909DFC3E563279C119025962 /* DirectoryZip.swift in Sources */,
 				C01E37A0DF4355093B1D3E59 /* ExperimentRunLog.swift in Sources */,
+				760D3C0D6CF4CED650AD84B9 /* EyeAspectRatio.swift in Sources */,
 				6848F8F9D2CFCA7817A46D5A /* EyeNormalizer.swift in Sources */,
 				DCDE8844FACAB3A3B9D55B9B /* FaceLandmarkerService.swift in Sources */,
 				05100573B8EB9BCAF03820C4 /* FaceNormalizer.swift in Sources */,
@@ -351,9 +366,11 @@
 				D4AAE2C13B891B4EE8C9D311 /* FixationStabilityModel.swift in Sources */,
 				7905DA3BBB39CF01BB251A9C /* FixationStabilityOverlay.swift in Sources */,
 				D7302BB3500080406A30C75B /* FixationStabilityResultsView.swift in Sources */,
+				88362FC0673CFC8BABC9D797 /* FrameInstrumentation.swift in Sources */,
 				06C808A42EE4DF806FCB8168 /* GazeEstimator.swift in Sources */,
 				01327E020C87251359052A69 /* GazeKalman.swift in Sources */,
 				3228C62B5AA79084938A29BC /* GazeNet.mlpackage in Sources */,
+				8C798B7670AB98708851BE19 /* GazePipeline.swift in Sources */,
 				38A3F92CA6FBF9442F1D0DCA /* GazeTrackerApp.swift in Sources */,
 				3675792A156EDC2BD4A8AF03 /* GazeViewModel.swift in Sources */,
 				7C9549AFEC4C96EDACFBA413 /* GridExperimentModel.swift in Sources */,
@@ -363,6 +380,8 @@
 				4D14C1039BD632539BFD7AF5 /* HeadPoseEstimator.swift in Sources */,
 				D073DAD9820CF5E0064D2002 /* ModelFetchSheet.swift in Sources */,
 				A2A531C6257B810EC4581C4F /* ModelUpdater.swift in Sources */,
+				5C250A398F89278368612C02 /* OneEuroFilter.swift in Sources */,
+				0B0DB6F8423C4B041581198C /* PipelineTuning.swift in Sources */,
 				51B2B8322BDB38D53ED38AAF /* PupilMeasure.swift in Sources */,
 				F6096877FD554AB1C84D7A05 /* ScreenMapper.swift in Sources */,
 				EE7872E76B2A7CB48B2659BC /* SolvePnP.swift in Sources */,
@@ -380,7 +399,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = Y8BLS28M4K;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = GazeTrackerPhase1/Info.plist;
@@ -459,7 +478,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = Y8BLS28M4K;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = GazeTrackerPhase1/Info.plist;

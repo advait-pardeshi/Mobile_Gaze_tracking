@@ -3,10 +3,11 @@ import SwiftUI
 /// Full-screen overlay for Experiment 2 (fixation stability, 4×4 grid).
 ///
 /// Deliberately sparse: the grid of boxes, and one red circle in the cell
-/// currently being held. No instruction text (global rule), and — unlike the
-/// other experiments — **no live gaze cursor**. A moving cursor is a moving
-/// stimulus: the participant tracks it instead of the circle, which is exactly
-/// the drift this experiment is trying to measure.
+/// currently being held. No instruction text (global rule). The live gaze
+/// cursor is drawn so the prediction can be watched during a run — note that
+/// a moving cursor is also a moving stimulus, so a participant who follows it
+/// instead of the red circle will inflate the very drift this experiment
+/// measures. It is drawn dim and small for that reason.
 ///
 /// Only the active cell is drawn brightly. The remaining cells stay very faint
 /// so the participant has no competing high-contrast edge to saccade toward
@@ -14,6 +15,10 @@ import SwiftUI
 struct FixationStabilityOverlay: View {
     @ObservedObject var controller: FixationStabilityController
     let screenSize: CGSize
+    /// Smoothed on-screen prediction, or nil when no estimate this frame.
+    /// Under `PipelineTuning.fixationScoredStream == .filtered` this is the
+    /// same point the run is scored on, so the cursor shows the measurement.
+    let livePrediction: CGPoint?
     let onCancel: () -> Void
 
     var body: some View {
@@ -57,6 +62,17 @@ struct FixationStabilityOverlay: View {
                 .frame(width: controller.phase == .settling ? 24 : 18,
                        height: controller.phase == .settling ? 24 : 18)
                 .position(controller.circleCenter)
+
+            // Live prediction cursor, drawn above the target so it stays
+            // readable when it lands on the circle.
+            if let p = livePrediction {
+                Circle()
+                    .strokeBorder(Color.white.opacity(0.55), lineWidth: 1.5)
+                    .background(Circle().fill(Color.cyan.opacity(0.55)))
+                    .frame(width: 18, height: 18)
+                    .position(p)
+                    .allowsHitTesting(false)
+            }
 
             // Bare trial counter — progress, not instruction.
             VStack(spacing: 6) {

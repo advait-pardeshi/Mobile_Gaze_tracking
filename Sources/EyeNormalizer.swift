@@ -38,7 +38,14 @@ final class EyeNormalizer {
     // Virtual camera setup. focalNorm tunes how much of the face surrounds the
     // eye in the crop: bigger value = tighter crop on the eye itself.
     static let normalizedDistance: Double = 600.0  // mm
-    static let normalizedFocal:    Double = 1000.0 // px @ normalizedDistance
+    /// Focal/distance ratio 960/600 = 1.60, matching the ETH-XGaze 224 px
+    /// convention in `data/normalized_camera_params/eth-xgaze.yaml` (and
+    /// `FaceNormalizer`). Was 1000 px (ratio 1.667, ~4 % tighter).
+    ///
+    /// NOTE: this affects the **debug eye strip only**. The Stage 4 CNN is
+    /// fed `FaceNormalizer`'s 224x224 crop, which has always used 960/600 —
+    /// see the branch notes.
+    static let normalizedFocal:    Double = 960.0  // px @ normalizedDistance
 
     /// Output of one Stage 3 invocation.
     struct Output {

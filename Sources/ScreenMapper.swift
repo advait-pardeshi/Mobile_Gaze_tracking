@@ -78,6 +78,127 @@ enum ScreenMapper {
         return ata.inverse * atb
     }
 
+
+    // MARK: - Robust fit
+
+    /// Outcome of a robust fit, with the diagnostics needed to decide whether
+    /// the fit is trustworthy *before* an experiment consumes it.
+    struct FitQuality {
+        let translation: simd_double3
+        /// Dots that survived outlier rejection and drove the final fit.
+        let usedDotIndices: [Int]
+        let totalDots: Int
+        /// Residual `|predicted - target|` per used dot, screen points.
+        let residualPoints: [Double]
+        /// Dots rejected as outliers, by original index.
+        let rejectedDotIndices: [Int]
+
+        var medianResidualPoints: Double {
+            ScreenMapper.median(residualPoints) ?? .nan
+        }
+        var maxResidualPoints: Double { residualPoints.max() ?? .nan }
+    }
+
+    /// Robust replacement for `fit(samples:)`.
+    ///
+    /// `fit(samples:)` is an unweighted least-squares over every retained
+    /// sample, which has two failure modes this addresses:
+    ///
+    ///   1. **Per-dot weighting is accidental.** A dot that happened to yield
+    ///      more valid frames pulls `t` harder than one that yielded fewer,
+    ///      even though the 9-dot design intends them to count equally. We
+    ///      collapse each dot to the component-wise **median** of its gaze
+    ///      ratios `(gx/gz, gy/gz)` first — which also discards blinks and
+    ///      the saccade into/out of the dot for free.
+    ///   2. **One bad dot corrupts the whole session.** If the participant
+    ///      wasn't actually fixating one dot, least-squares spreads that error
+    ///      across `t` and biases *every* prediction on screen by a constant
+    ///      offset — which is exactly the flat-across-eccentricity,
+    ///      shifted-between-runs signature seen in the grid-experiment logs.
+    ///      We fit, score each dot's residual, drop outliers by MAD, and refit.
+    ///
+    /// Returns nil when too few dots survive to trust the result.
+    static func fitRobust(perDot: [(gazes: [simd_double3],
+                                     target: simd_double2)]) -> FitQuality? {
+        // Stage 1: collapse each dot to a robust ratio pair.
+        var rows: [(r: Double, q: Double, target: simd_double2, dot: Int)] = []
+        for (i, d) in perDot.enumerated() {
+            var rs: [Double] = [], qs: [Double] = []
+            for g in d.gazes where abs(g.z) > 0.1 {
+                rs.append(g.x / g.z)
+                qs.append(g.y / g.z)
+            }
+            guard let r = median(rs), let q = median(qs) else { continue }
+            rows.append((r, q, d.target, i))
+        }
+        guard rows.count >= 4 else { return nil }
+
+        // Stage 2: first pass over all surviving dots.
+        guard let t0 = solveT(rows: rows) else { return nil }
+
+        // Stage 3: per-dot residual, then MAD-based rejection.
+        let res0 = rows.map { row -> Double in
+            simd_distance(simd_double2(t0.x + t0.z * row.r,
+                                       t0.y + t0.z * row.q), row.target)
+        }
+        let med = median(res0) ?? 0
+        let mad = median(res0.map { abs($0 - med) }) ?? 0
+        // 1.4826·MAD ≈ σ for normal data; 3σ is the usual outlier line.
+        // The 20 pt floor stops a very tight fit from rejecting dots that are
+        // fine in absolute terms — we want to catch broken dots, not trim
+        // healthy scatter.
+        let threshold = max(med + 3.0 * 1.4826 * mad, med + 20.0)
+
+        var kept: [(r: Double, q: Double, target: simd_double2, dot: Int)] = []
+        var rejected: [Int] = []
+        for (row, r) in zip(rows, res0) {
+            if r <= threshold { kept.append(row) } else { rejected.append(row.dot) }
+        }
+
+        // Stage 4: refit on survivors. Below 6 of 9 dots the fit isn't
+        // sampled broadly enough to be worth handing to an experiment —
+        // fail loudly instead of returning a plausible-looking `t`.
+        guard kept.count >= 6, let t = solveT(rows: kept) else { return nil }
+
+        let resFinal = kept.map { row -> Double in
+            simd_distance(simd_double2(t.x + t.z * row.r,
+                                       t.y + t.z * row.q), row.target)
+        }
+        return FitQuality(translation: t,
+                          usedDotIndices: kept.map(\.dot),
+                          totalDots: perDot.count,
+                          residualPoints: resFinal,
+                          rejectedDotIndices: rejected)
+    }
+
+    /// Shared normal-equation solve: stacks two rows per entry into
+    /// `(AᵀA)·t = Aᵀb` and inverts. Extracted so `fit` and `fitRobust`
+    /// can't drift apart.
+    private static func solveT(
+        rows: [(r: Double, q: Double, target: simd_double2, dot: Int)]
+    ) -> simd_double3? {
+        var ata = simd_double3x3()
+        var atb = simd_double3()
+        for row in rows {
+            let rowX = simd_double3(1, 0, row.r)
+            let rowY = simd_double3(0, 1, row.q)
+            ata.columns.0 += rowX * rowX.x + rowY * rowY.x
+            ata.columns.1 += rowX * rowX.y + rowY * rowY.y
+            ata.columns.2 += rowX * rowX.z + rowY * rowY.z
+            atb += rowX * row.target.x + rowY * row.target.y
+        }
+        guard abs(ata.determinant) > 1e-9 else { return nil }
+        return ata.inverse * atb
+    }
+
+    /// Median of an unsorted array; nil when empty.
+    static func median(_ xs: [Double]) -> Double? {
+        let v = xs.filter(\.isFinite).sorted()
+        guard !v.isEmpty else { return nil }
+        let m = v.count / 2
+        return v.count % 2 == 1 ? v[m] : (v[m - 1] + v[m]) * 0.5
+    }
+
     /// 3×3 grid of calibration targets in screen-center-relative points.
     /// Inset to 80% of the screen extent so the dots stay clear of the
     /// safe-area edges.

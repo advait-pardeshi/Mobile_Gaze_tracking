@@ -146,7 +146,19 @@ final class GazeEstimator {
 
         let pitch = outArr[0].doubleValue
         let yaw   = outArr[1].doubleValue
+        return Self.estimate(pitch: pitch, yaw: yaw, normalizationRotation: Rn)
+    }
 
+    /// Build an `Estimate` from `(pitch, yaw)` and the normalization rotation
+    /// the crop was taken with, without touching the CNN.
+    ///
+    /// Extracted from `estimate(tensorRGB:normalizationRotation:)` so the
+    /// One Euro smoother can filter the two angles the network actually
+    /// predicts and then re-derive the camera-frame ray from them. Smoothing
+    /// `gazeCam` directly instead would smooth a unit vector through
+    /// non-linear terms and would not stay unit-length.
+    static func estimate(pitch: Double, yaw: Double,
+                         normalizationRotation Rn: simd_double3x3) -> Estimate {
         // ETH-XGaze convention: gaze_norm_eth = -(cos(p)·sin(y), sin(p), cos(p)·cos(y))
         let cp = cos(pitch), sp = sin(pitch)
         let cy = cos(yaw),   sy = sin(yaw)

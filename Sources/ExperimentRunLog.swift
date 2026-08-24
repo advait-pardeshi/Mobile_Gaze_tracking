@@ -38,7 +38,13 @@ struct ExperimentRunLog {
     /// `raw_pitch_deg`/`raw_yaw_deg` without the normalization rotation
     /// `R_n`, which is not logged. `trials.csv` still carries its own
     /// per-trial `gaze_cam_*` snapshot.
-    static let schemaVersion = 3
+    /// v4 re-added a *filtered* stream (`filt_pitch_deg`, `filt_yaw_deg`,
+    /// `filt_pred_x`, `filt_pred_y`) alongside the raw one, plus `ear` and
+    /// `blink_held`. The `filt_*` columns were dropped in v2 because nothing
+    /// wrote them; the One Euro smoother does. Raw and filtered are now two
+    /// genuinely separate streams and neither is derived from the other in
+    /// post.
+    static let schemaVersion = 4
 
     /// Per-frame diagnostic bundle for noise attribution: the same frame
     /// observed at several points in the pipeline, so an off-device
@@ -49,7 +55,7 @@ struct ExperimentRunLog {
     ///   * `std(raw_pitch_deg, raw_yaw_deg)` → CNN + normalization noise.
     ///   * `std(eye_cam_z_mm)` → PnP depth noise, the term multiplied into
     ///     the screen point by `μ = -tz/gz` in `ScreenMapper.planeIntersect`.
-    ///   * `std(raw_pred_*)` vs `std(pred_*)` → what the Kalman filter buys.
+    ///   * `std(raw_pred_*)` vs `std(filt_pred_*)` → what the smoother buys.
     ///   * `count(|Δ raw_pred| > 60 pt)` → outlier rate at the source.
     ///
     /// All fields default to NaN so call sites that don't have a value
@@ -66,6 +72,27 @@ struct ExperimentRunLog {
         /// PnP eye midpoint (gaze-ray origin), camera frame, mm — raw.
         /// Written to the `eye_cam_*_mm` columns.
         var eyeCam = simd_double3(.nan, .nan, .nan)
+
+        /// Post-One-Euro gaze angles, degrees. The filtered counterpart of
+        /// `rawPitchDeg`/`rawYawDeg`.
+        var filtPitchDeg: Double = .nan
+        var filtYawDeg: Double = .nan
+        /// Screen point from the *filtered* gaze — the point that is
+        /// rendered. Absolute screen points.
+        var filtPredX: Double = .nan
+        var filtPredY: Double = .nan
+
+        /// Mean eye-aspect-ratio for this frame; drives the blink gate.
+        var ear: Double = .nan
+        /// True when the CNN was skipped for this frame (EAR below
+        /// threshold) and the rendered point is a held-over estimate.
+        ///
+        /// On such a frame every `raw*` field stays NaN: there was no new
+        /// measurement, and writing the held value would put a duplicate
+        /// into the raw stream and understate its variance. Analysis should
+        /// treat `blink_held = 1` rows as missing raw samples, not as
+        /// samples with zero change.
+        var blinkHeld: Bool = false
 
         static let empty = Diagnostics()
     }
@@ -119,7 +146,7 @@ struct ExperimentRunLog {
     }
 
     /// Column order of `samples.csv`. The first 23 are the analysis set;
-    /// the last 4 are `Diagnostics` (see above).
+    /// the last 10 are `Diagnostics` (see above).
     static let sampleHeader: [String] = [
         "t_s", "trial", "cell_idx", "row", "col",
         "target_x", "target_y",
@@ -132,6 +159,9 @@ struct ExperimentRunLog {
         // Diagnostics — see `ExperimentRunLog.Diagnostics`.
         "raw_pitch_deg", "raw_yaw_deg",
         "raw_pred_x", "raw_pred_y",
+        "filt_pitch_deg", "filt_yaw_deg",
+        "filt_pred_x", "filt_pred_y",
+        "ear", "blink_held",
     ]
 
     /// Short experiment key: "exp1" / "exp2" / "exp3".
@@ -207,6 +237,9 @@ struct ExperimentRunLog {
                 fmt(s.pupilLeftPx, 3), fmt(s.pupilRightPx, 3),
                 fmt(s.diag.rawPitchDeg, 4), fmt(s.diag.rawYawDeg, 4),
                 fmt(s.diag.rawPredX, 2), fmt(s.diag.rawPredY, 2),
+                fmt(s.diag.filtPitchDeg, 4), fmt(s.diag.filtYawDeg, 4),
+                fmt(s.diag.filtPredX, 2), fmt(s.diag.filtPredY, 2),
+                fmt(s.diag.ear, 5), s.diag.blinkHeld ? "1" : "0",
             ].joined(separator: ","))
         }
         return lines.joined(separator: "\n") + "\n"
@@ -253,6 +286,7 @@ struct ExperimentRunLog {
             "duration_s": samples.last.map { $0.t - runStart } ?? 0,
             "sample_count": samples.count,
             "prediction_source": predictionSource,
+            "pipeline_tuning": PipelineTuning.describe(),
             "grid": ["rows": rows, "cols": cols],
             "screen": ["w_pt": Double(screenSize.width),
                        "h_pt": Double(screenSize.height)],

@@ -15,7 +15,7 @@ import CoreGraphics
 /// two: a miss there could be systematic bias or could be jitter. Holding one
 /// point separates them — the centroid's offset from the circle is the bias,
 /// and the spread about that centroid is the noise floor of the whole pipeline
-/// (CNN + PnP + Kalman). Repeating that at 16 positions shows whether the
+/// (CNN + PnP, measured *before* any output smoothing — see `ingest`). Repeating that at 16 positions shows whether the
 /// noise floor is uniform or degrades toward the corners, which a single
 /// centred box cannot reveal. No grid experiment can resolve better than the
 /// noise floor reported here, which is what makes this the measurement that
@@ -23,8 +23,7 @@ import CoreGraphics
 ///
 /// Per-cell protocol:
 ///  1. `settleDuration` seconds of unscored lead-in, so the saccade onto the
-///     circle and the Kalman filter's convergence transient stay out of the
-///     statistics.
+///     circle stays out of the statistics.
 ///  2. `captureDuration` seconds of scored fixation.
 ///  3. Advance to the next cell; complete after the last one.
 
@@ -435,7 +434,12 @@ final class FixationStabilityController: ObservableObject {
             experiment: "exp2",
             variant: "fixation_stability_\(rows)x\(cols)",
             runLabel: "Experiment 2 (fixation stability, \(rows)×\(cols))",
-            predictionSource: "smoothed",
+            // Whichever stream `GazeViewModel` is feeding us — see
+            // `PipelineTuning.fixationScoredStream`. Stamped into the run so
+            // no run's numbers are ambiguous: "raw" is the estimator's noise
+            // floor, "filtered" is the smoothed cursor the participant sees,
+            // and the two are not comparable across runs.
+            predictionSource: PipelineTuning.fixationScoredStream.rawValue,
             screenSize: screenSize,
             rows: rows,
             cols: cols,
@@ -491,9 +495,17 @@ final class FixationStabilityController: ObservableObject {
         result = nil
     }
 
-    /// Per-frame feed. `predictionScreenAbs` is the Kalman-smoothed point
-    /// drawn on screen, so the precision figure describes the signal the
-    /// experiments actually consume — not a cleaner internal one.
+    /// Per-frame feed. Whether `predictionScreenAbs` is the unsmoothed
+    /// projected point or the smoothed one the cursor is drawn from is
+    /// `PipelineTuning.fixationScoredStream`, recorded as `predictionSource`.
+    /// On `.raw`, frames with no raw sample (blink-gated) are simply not
+    /// delivered here, so a held-over estimate can never enter the scatter
+    /// as a zero-variance sample; on `.filtered` the blink holds are part of
+    /// the stream, because they are part of what the participant sees.
+    ///
+    /// `diagnostics` carries the other stream alongside, so an off-device
+    /// analysis can still compare the two without either being derived from
+    /// the other.
     func ingest(predictionScreenAbs: CGPoint,
                 gazeCam: simd_double3,
                 headPose: HeadPose,
