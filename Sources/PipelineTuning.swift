@@ -71,10 +71,18 @@ enum PipelineTuning {
 
     // MARK: - Blink gating
 
-    /// Eye-aspect-ratio below which the frame is treated as a blink and the
-    /// CNN is skipped entirely. A fully-open eye sits near 0.30 on this
-    /// landmark set; a closed one near 0.10.
-    static let blinkEARThreshold: Double = 0.18
+    /// Blink gate, as a fraction of the participant's own running open-eye
+    /// EAR (see `BlinkDetector`), with an absolute backstop.
+    ///
+    /// This used to be a single absolute threshold of 0.18. That cannot be
+    /// set: a downward gaze — looking at the bottom row of any of the
+    /// experiment grids — drops EAR to ~0.15–0.20 with the eye wide open, so
+    /// 0.18 gated the CNN off exactly when the participant was reaching the
+    /// bottom of the screen and the dot froze mid-travel. A ratio against the
+    /// user's own baseline separates the two: a downward gaze keeps ~65–80 %
+    /// of the open aperture, a blink collapses to ~30 %.
+    static let blinkEARRatio: Double = 0.62
+    static let blinkEARFloor: Double = 0.13
 
     /// Longest run of consecutive blink-gated frames that will keep holding
     /// the previous estimate. Past this the estimate is dropped rather than
@@ -103,7 +111,7 @@ enum PipelineTuning {
         + "gaze(minCutoff=\(gazeAngleMinCutoff),beta=\(gazeAngleBeta)) "
         + "eye(minCutoff=\(eyePositionMinCutoff),beta=\(eyePositionBeta)) "
         + "head(minCutoff=\(headPoseMinCutoff),beta=\(headPoseBeta)) "
-        + "blinkEAR=\(blinkEARThreshold) "
+        + "blinkEAR=ratio\(blinkEARRatio)/floor\(blinkEARFloor) "
         + "debugEvery=\(debugCropPublishInterval)"
     }
 }

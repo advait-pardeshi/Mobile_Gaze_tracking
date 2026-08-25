@@ -57,6 +57,10 @@ final class FrameInstrumentation {
 
         var earLeft: Double = .nan
         var earRight: Double = .nan
+        /// Running open-eye EAR the blink gate is comparing against this
+        /// frame. Logged so a run can be re-scored offline against a
+        /// different `closedRatio` without re-collecting it.
+        var earBaseline: Double = .nan
         var blinkHeld: Bool = false
 
         // Degrees. Raw is left NaN on a blink-held frame — there was no new
@@ -83,7 +87,7 @@ final class FrameInstrumentation {
         "q_filt_x", "q_filt_y", "q_filt_z", "q_filt_w",
         "eye_raw_x_mm", "eye_raw_y_mm", "eye_raw_z_mm",
         "eye_filt_x_mm", "eye_filt_y_mm", "eye_filt_z_mm",
-        "ear_left", "ear_right", "ear_mean", "blink_held",
+        "ear_left", "ear_right", "ear_mean", "ear_baseline", "blink_held",
         "raw_pitch_deg", "raw_yaw_deg", "filt_pitch_deg", "filt_yaw_deg",
         "raw_pred_x", "raw_pred_y", "filt_pred_x", "filt_pred_y",
     ]
@@ -185,6 +189,7 @@ final class FrameInstrumentation {
         cells += vec(r.eyeFiltered)
         let earMean = EyeAspectRatio.Ratios(left: r.earLeft, right: r.earRight).mean
         cells += [f(r.earLeft, 5), f(r.earRight, 5), f(earMean, 5),
+                  f(r.earBaseline, 5),
                   r.blinkHeld ? "1" : "0"]
         cells += [f(r.rawPitchDeg, 4), f(r.rawYawDeg, 4),
                   f(r.filtPitchDeg, 4), f(r.filtYawDeg, 4)]

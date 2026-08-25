@@ -106,6 +106,11 @@ final class GazePipeline {
         beta: PipelineTuning.eyePositionBeta,
         dCutoff: PipelineTuning.eyePositionDCutoff)
 
+    /// Adaptive blink gate. Replaces the fixed EAR threshold, which could
+    /// not tell a blink from a downward gaze and so froze the dot whenever
+    /// the participant looked at the bottom of the screen.
+    private var blinkDetector = BlinkDetector()
+
     private var lastFilterTime: CFTimeInterval?
     /// Last filtered estimate, held across blink-gated frames.
     private var heldEstimate: GazeEstimator.Estimate?
@@ -120,6 +125,7 @@ final class GazePipeline {
         pitchFilter.reset()
         yawFilter.reset()
         eyePositionFilter.reset()
+        blinkDetector.reset()
         lastFilterTime = nil
         heldEstimate = nil
         blinkHeldFrames = 0
@@ -263,7 +269,7 @@ final class GazePipeline {
         // behind it. Skipping the CNN outright is both cheaper and more
         // honest than trying to reject the answer afterwards.
         let meanEAR = ear.mean
-        let isBlink = meanEAR.isFinite && meanEAR < PipelineTuning.blinkEARThreshold
+        let isBlink = blinkDetector.isBlink(meanEAR: meanEAR)
 
         var rawEstimate: GazeEstimator.Estimate?
         var blinkHeld = false
@@ -283,6 +289,7 @@ final class GazePipeline {
             timing.dtCNN = CACurrentMediaTime() - tCNN0
         }
         timing.blinkHeld = blinkHeld
+        timing.earBaseline = blinkDetector.currentBaseline
 
         // ---- Stage 4b: smoothing, BEFORE projection ----------------------
         let tFilt0 = CACurrentMediaTime()

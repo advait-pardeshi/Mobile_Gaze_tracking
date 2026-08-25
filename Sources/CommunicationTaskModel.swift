@@ -24,8 +24,12 @@ import CoreGraphics
 /// re-selected until the gaze has left it, so one long fixation produces one
 /// word rather than a stream of repeats.
 ///
-/// The run ends when all target words have been selected in order, or when
-/// `maxSelections` / `runTimeout` is reached.
+/// The run has **no automatic end**: it stops only when the operator taps
+/// Finish (score and log it) or Cancel (discard it). There is deliberately no
+/// selection cap and no run timeout — a participant who has finished the
+/// target sentence can keep composing, and the operator decides when there is
+/// enough data. `completed` in the result still reports whether the target
+/// sentence itself was reproduced in order.
 
 /// The words shown, and which of them form the target sentence.
 struct CommunicationWordSet {
@@ -269,10 +273,6 @@ final class CommunicationTaskController: ObservableObject {
     let screenSize: CGSize
     let calibration: CalibrationModel
     let dwellRequirement: CFTimeInterval
-    /// Hard cap on selections, so a participant who cannot hit the target
-    /// words still terminates rather than running to the timeout.
-    let maxSelections: Int
-    let runTimeout: CFTimeInterval
     /// Height of the composed-sentence strip along the top of the screen.
     /// The word grid is laid out *below* it so a fixation on the strip can
     /// never be scored as a word selection.
@@ -292,14 +292,13 @@ final class CommunicationTaskController: ObservableObject {
     /// leaves it. Without this, holding a fixation emits the same word every
     /// `dwellRequirement` seconds.
     private var blockedCell: Int?
-    private var timer: Timer?
 
     private var runLog: ExperimentRunLog
     private(set) var runBundleURL: URL?
 
-    /// Invoked once when the run completes, on the main actor. A run can end
-    /// from the run timer or the Finish button, off the gaze path, so the owner
-    /// cannot rely on seeing `.complete` during its next `ingest`.
+    /// Invoked once when the run completes, on the main actor. A run ends
+    /// from the Finish button, off the gaze path, so the owner cannot rely on
+    /// seeing `.complete` during its next `ingest`.
     var onComplete: ((CommunicationTaskResult) -> Void)?
 
     init(screenSize: CGSize,
@@ -307,8 +306,6 @@ final class CommunicationTaskController: ObservableObject {
          wordSet: CommunicationWordSet = .standard,
          audio: WordAudioPlayer,
          dwellRequirement: CFTimeInterval = 1.0,
-         maxSelections: Int = 15,
-         runTimeout: CFTimeInterval = 180.0,
          sentenceBarHeight: CGFloat = 96,
          controlBarHeight: CGFloat = 84) {
         self.screenSize = screenSize
@@ -316,8 +313,6 @@ final class CommunicationTaskController: ObservableObject {
         self.wordSet = wordSet
         self.audio = audio
         self.dwellRequirement = dwellRequirement
-        self.maxSelections = maxSelections
-        self.runTimeout = runTimeout
         self.sentenceBarHeight = sentenceBarHeight
         self.controlBarHeight = controlBarHeight
         let area = CGRect(
@@ -334,8 +329,7 @@ final class CommunicationTaskController: ObservableObject {
             screenSize: screenSize,
             rows: wordSet.rows,
             cols: wordSet.cols,
-            timing: ["dwell_requirement_s": dwellRequirement,
-                     "run_timeout_s": runTimeout])
+            timing: ["dwell_requirement_s": dwellRequirement])
 
         // Shuffle word→cell assignment each run so the participant can't
         // learn positions across runs, which would turn a search task into a
@@ -366,8 +360,6 @@ final class CommunicationTaskController: ObservableObject {
                 isTargetWord: targetWords.contains(word))
         }
     }
-
-    deinit { timer?.invalidate() }
 
     /// The word the sentence needs next, or nil once complete.
     var expectedWord: String? {
@@ -401,7 +393,6 @@ final class CommunicationTaskController: ObservableObject {
             phase = .failed("Target words not on grid: \(missing.joined(separator: ", "))")
             return
         }
-        timer?.invalidate()
         selections.removeAll()
         expectedIndex = 0
         activeCellIndex = nil
@@ -413,16 +404,9 @@ final class CommunicationTaskController: ObservableObject {
         lastSelectionTime = nil
         phase = .running
         runLog.begin()
-        let t = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.tick() }
-        }
-        RunLoop.main.add(t, forMode: .common)
-        self.timer = t
     }
 
     func cancel() {
-        timer?.invalidate()
-        timer = nil
         audio.stop()
         phase = .idle
         activeCellIndex = nil
@@ -430,11 +414,10 @@ final class CommunicationTaskController: ObservableObject {
         result = nil
     }
 
-    /// Finish early, scoring whatever was composed.
+    /// End the run, scoring whatever was composed. The only way a run
+    /// finishes — there is no timer and no selection cap behind it.
     func finishNow() {
         guard phase == .running else { return }
-        timer?.invalidate()
-        timer = nil
         finish()
     }
 
@@ -546,21 +529,11 @@ final class CommunicationTaskController: ObservableObject {
         blockedCell = cell.index
         resetDwell()
 
-        if expectedIndex >= wordSet.target.count
-            || selections.count >= maxSelections {
-            timer?.invalidate()
-            timer = nil
-            finish()
-        }
-    }
-
-    private func tick() {
-        guard phase == .running else { return }
-        if CACurrentMediaTime() - runStart >= runTimeout {
-            timer?.invalidate()
-            timer = nil
-            finish()
-        }
+        // No automatic stop. The run ends only when the operator says so —
+        // Finish (score and log it) or Cancel (discard it). Reaching the end
+        // of the target sentence is a *milestone*, not a terminator: the
+        // participant keeps composing, and every further selection is
+        // recorded with `targetPosition = -1`.
     }
 
     private func finish() {
