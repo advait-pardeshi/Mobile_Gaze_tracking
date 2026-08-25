@@ -123,6 +123,13 @@ final class GazeViewModel: ObservableObject {
     /// the composed sentence can still be replayed after the run.
     private(set) var lastCommTaskResult: CommunicationTaskResult?
 
+    /// Experiment 4 (prompted predictive communication) — active controller.
+    @Published var predictiveController: PredictiveTaskController?
+    /// Experiment 4 — last finished run. Not `@Published`, for the same
+    /// reason as Experiment 3: there is no results screen, the numbers are
+    /// read off the master log and the run bundle.
+    private(set) var lastPredictiveResult: PredictiveTaskResult?
+
     /// Hot-swap model state: short status string surfaced in the HUD / fetch
     /// sheet. Examples: "fetching… 2.1 MB", "loaded p07_GazeNet (12 files)",
     /// "fetch failed: manifest HTTP 404". Cleared after success.
@@ -225,6 +232,7 @@ final class GazeViewModel: ObservableObject {
             && fixationResult == nil
             && commTaskController == nil
             && commTaskResult == nil
+            && predictiveController == nil
     }
 
     // Camera buffers waiting for their landmarks. The cache is its own
@@ -493,6 +501,47 @@ final class GazeViewModel: ObservableObject {
         self.commTaskResult = nil
         self.commTaskController = c
         c.start()
+    }
+
+    /// Begin Experiment 4 (prompted predictive communication task).
+    ///
+    /// `scoring` picks the condition: `.cued` tells the participant which
+    /// answer to give and keeps the numbers comparable to Experiment 3;
+    /// `.free` lets them answer as they like and is scored on time and
+    /// corrections instead. Both write to the same master log, tagged.
+    func startPredictiveTask(
+        scoring: PredictiveTaskResult.Scoring = .cued
+    ) {
+        guard let cal = calibration else {
+            print("[Gaze] Experiment 4: calibrate first.")
+            return
+        }
+        guard screenSize.width > 0, screenSize.height > 0 else {
+            print("[Gaze] Experiment 4: missing screen size.")
+            return
+        }
+        let c = PredictiveTaskController(screenSize: screenSize,
+                                         calibration: cal,
+                                         audio: wordAudio,
+                                         scoring: scoring)
+        c.onComplete = { [weak self] r in
+            guard let self = self else { return }
+            self.lastPredictiveResult = r
+            self.predictiveController = nil
+            do {
+                _ = try r.appendToMasterLog()
+            } catch {
+                print("experiment4 log append failed: \(error)")
+            }
+        }
+        self.lastPredictiveResult = nil
+        self.predictiveController = c
+        c.start()
+    }
+
+    func cancelPredictiveTask() {
+        predictiveController?.cancel()
+        predictiveController = nil
     }
 
     func cancelCommunicationTask() {
@@ -920,6 +969,11 @@ extension GazeViewModel {
                                    headPose: pose,
                                    pupilDiameters: pupil,
                                    diagnostics: diag)
+        predictiveController?.ingest(predictionScreenAbs: rendered,
+                                     gazeCam: filtered.gazeCam,
+                                     headPose: pose,
+                                     pupilDiameters: pupil,
+                                     diagnostics: diag)
 
         recordFrameTime()
         finishTiming(&timing, workerDone: workerDone, diag: diag)

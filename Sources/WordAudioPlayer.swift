@@ -1,7 +1,8 @@
 import Foundation
 import AVFoundation
 
-/// Speaks a word aloud when it is selected in Experiment 3.
+/// Speaks a word aloud when it is selected in Experiment 3, and the prompted
+/// question in Experiment 4.
 ///
 /// Uses `AVSpeechSynthesizer` rather than bundled recordings so the word list
 /// can change without shipping new audio assets.
@@ -28,6 +29,29 @@ final class WordAudioPlayer {
     /// intelligible; the default rate clips one-syllable words.
     var rate: Float = 0.45
     var language: String = "en-US"
+
+    /// True while an utterance is in flight. Experiment 4 polls this to end
+    /// its prompt phase only once the question has actually finished being
+    /// spoken, so listening time never lands in the response clock.
+    var isSpeaking: Bool { synthesizer.isSpeaking }
+
+    /// Speak a prompted question (Experiment 4).
+    ///
+    /// Slightly faster than `rate`: a whole sentence read at the
+    /// single-word rate is unnaturally slow, and the prompt phase is dead
+    /// time in the run.
+    func speakQuestion(_ text: String) {
+        let q = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return }
+        configureSessionIfNeeded()
+        if synthesizer.isSpeaking {
+            synthesizer.stopSpeaking(at: .immediate)
+        }
+        let utterance = AVSpeechUtterance(string: q)
+        utterance.rate = min(0.5, rate + 0.05)
+        utterance.voice = AVSpeechSynthesisVoice(language: language)
+        synthesizer.speak(utterance)
+    }
 
     /// Speak `word`, cancelling anything currently being spoken.
     func speak(_ word: String) {

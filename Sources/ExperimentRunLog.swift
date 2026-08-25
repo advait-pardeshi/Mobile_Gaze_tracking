@@ -3,7 +3,7 @@ import simd
 import QuartzCore
 import CoreGraphics
 
-/// Per-run experiment bundle, shared by the three experiments.
+/// Per-run experiment bundle, shared by the four experiments.
 ///
 /// Each run gets its own directory under
 /// `Documents/experiment_runs/<exp>_<variant>_run<N>_<stamp>/` holding:
@@ -110,7 +110,8 @@ struct ExperimentRunLog {
         let cellIdx: Int
         let row: Int
         let col: Int
-        /// "dwell"/"capture" for Exp 1, "active" for Exp 2/3.
+        /// "dwell"/"capture" for Exp 1, "active" for Exp 2/3,
+        /// "prompt"/"response" for Exp 4.
         let phase: String
         /// Active cell rect, absolute screen points.
         let cellRect: CGRect
@@ -164,7 +165,7 @@ struct ExperimentRunLog {
         "ear", "blink_held",
     ]
 
-    /// Short experiment key: "exp1" / "exp2" / "exp3".
+    /// Short experiment key: "exp1" / "exp2" / "exp3" / "exp4".
     let experiment: String
     /// Filename-safe variant key, e.g. "9x9_walking", "5x4_images".
     let variant: String

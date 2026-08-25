@@ -62,9 +62,8 @@ struct CommunicationTaskOverlay: View {
         }
     }
 
-    /// The sentence as composed so far. Correct selections read white;
-    /// selections that weren't the needed next word read red, so the
-    /// participant can see (as well as hear) that they mis-picked.
+    /// The sentence as composed so far. All selections read white — the
+    /// strip only mirrors what was picked, without flagging mis-picks.
     private var sentenceStrip: some View {
         VStack(spacing: 4) {
             HStack(spacing: 8) {
@@ -72,7 +71,7 @@ struct CommunicationTaskOverlay: View {
                         id: \.offset) { _, sel in
                     Text(sel.word)
                         .font(.title3.weight(.semibold))
-                        .foregroundColor(sel.isCorrect ? .white : .red)
+                        .foregroundColor(.white)
                 }
             }
             .frame(maxWidth: .infinity)

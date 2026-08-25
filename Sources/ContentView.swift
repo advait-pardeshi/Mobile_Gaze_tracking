@@ -114,6 +114,14 @@ struct ContentView: View {
                 if viewModel.isIdle {
                     VStack(alignment: .trailing, spacing: 8) {
                         if viewModel.isCalibrationUsable {
+                            triggerButton("Experiment 4 — Predictive (cued)",
+                                          color: .indigo.opacity(0.9)) {
+                                viewModel.startPredictiveTask(scoring: .cued)
+                            }
+                            triggerButton("Experiment 4 — Predictive (free)",
+                                          color: .indigo.opacity(0.6)) {
+                                viewModel.startPredictiveTask(scoring: .free)
+                            }
                             triggerButton("Experiment 3 — Communication",
                                           color: .pink.opacity(0.9)) {
                                 viewModel.startCommunicationTask()
@@ -298,7 +306,18 @@ struct ContentView: View {
                     )
                 }
 
-                // Experiment 3 has no results screen by design: the run ends
+                // Experiment 4: prompted predictive overlay (3×3 grid).
+                if let pt = viewModel.predictiveController {
+                    PredictiveTaskOverlay(
+                        controller: pt,
+                        screenSize: geo.size,
+                        livePrediction: viewModel.gazeScreenPoint,
+                        onCancel: { viewModel.cancelPredictiveTask() },
+                        onFinish: { pt.finishNow() }
+                    )
+                }
+
+                // Experiments 3 and 4 have no results screen by design: the run ends
                 // straight back to idle and the numbers are read off the
                 // master log / run bundle instead of the phone.
             }

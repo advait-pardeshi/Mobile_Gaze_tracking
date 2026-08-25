@@ -6,7 +6,7 @@ import simd
 /// capture window, and offers a Cancel button.
 ///
 /// Carries **no instruction text** (global rule across calibration and all
-/// three experiments): the participant is briefed verbally, and the dot's
+/// four experiments): the participant is briefed verbally, and the dot's
 /// colour carries the state — yellow while settling, green while the window
 /// is actually capturing. A dot counter is kept, dimmed, because an operator
 /// needs to know how far through the run they are; a failure message is kept

@@ -77,7 +77,7 @@ If `Faces: 0` while your face is clearly visible:
 ## Study protocol: calibration → validation → experiments
 
 The app runs a fixed protocol. **All on-screen instruction text has been
-removed** from calibration and from all three experiments — participants are
+removed** from calibration and from all four experiments — participants are
 briefed verbally, and the screens carry only the stimulus plus minimal
 progress/feedback. Every run writes a self-describing bundle to
 `Documents/experiment_runs/` (`samples.csv` + `trials.csv` + `meta.json`,
@@ -151,6 +151,55 @@ python3 Tools/gen_word_images.py     # needs Pillow
 Replace those PNGs with real pictograms using the same `word_<lowercase>.png`
 names to swap the vocabulary's artwork; the overlay falls back to rendering
 the word as text if an image is missing.
+
+### Experiment 4 — Prompted predictive communication *(new)*
+A **3×3 grid** whose contents are rebuilt after every selection by a next-word
+predictor. The app **asks a question** ("How are you feeling today?"), and the
+participant answers by dwelling their way down the prediction tree.
+
+Nine cells: **7 prediction slots** plus `⌫ back` (bottom-left) and `✓ done`
+(bottom-right) at fixed positions all run, so the controls become a motor habit
+rather than a search. The controls dwell **1.5 s** against 1.0 s for words —
+they sit in the corners, where Experiment 2 reports the worst scatter, and an
+accidental `⌫` destroys a word.
+
+Each trial is two phases. The question is **spoken and shown while the grid is
+hidden**; then the text disappears, the grid goes live and the response clock
+starts. That is how the no-instructions rule is honoured here — nothing
+competes with the stimulus while gaze is scored, and listening time never
+enters the rate. Every grid change raises a **0.4 s lockout** in which samples
+are logged but no dwell accrues, so the fixation already in flight cannot be
+charged to a word the participant has not yet seen.
+
+Cells are as wide as Experiment 3's and a third taller, so this asks *less* of
+the estimator than Experiment 3 does. The point is what that buys: seven slots
+reach ~7⁴ ≈ 2 400 four-word sentences where a static 9-cell grid reaches almost
+none. Prediction is what makes a grid coarse enough for the tracker to resolve
+still expressive enough to talk with.
+
+**Two conditions**, both from the idle screen and both tagged in the log:
+
+  - **Cued** — the participant is told which answer to give. `isCorrect` is
+    defined exactly as in Experiment 3, so accuracy and words-per-minute are
+    directly comparable to it. One of the five questions is cued with
+    **"I want to drink water"** — Experiment 3's exact sentence, giving a
+    like-for-like static-vs-predictive comparison at identical dwell time.
+  - **Free** — the participant answers as they like. No correctness; scored on
+    time-to-answer, `⌫` corrections and selection overhead.
+
+Reports selection accuracy, seconds per word, words-per-minute, corrections and
+**selection overhead** (dwells spent ÷ dwells the answer needed) — plus the
+metric the design exists for, **predictor hit rate**: how often the needed word
+was on the grid *at all*. That splits *the tracker picked the wrong cell* from
+*the right word was never offered*, which Experiment 3 cannot distinguish.
+
+The question set and its response trees live in `Sources/ResponsePredictor.swift`.
+The shipped predictor is a hand-authored trie, not a language model, and
+deliberately so: it is deterministic (every participant sees the same grid at
+the same step), adds no inference latency to the rate metric, and can be
+*checked* before the run that every cued answer is reachable — a run refuses to
+start otherwise. `ResponsePredictor` is a protocol, so an n-gram table or an
+on-device LM can be added later as a second conformance and a condition flag.
 
 ### A note on degrees
 Angular error uses the calibration's fitted `|tz|` as the eye-to-screen
