@@ -53,7 +53,12 @@ targets:
         IPHONEOS_DEPLOYMENT_TARGET: "15.0"
         GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: ""
+        # The real team, not "": an empty string makes xcodegen emit
+        # `DevelopmentTeam = ""` into the target attributes and xcodebuild
+        # rejects the target as unsigned. This value used to live only in the
+        # generated .pbxproj, so every `xcodegen generate` silently dropped it
+        # and broke device builds until someone re-picked the team in Xcode.
+        DEVELOPMENT_TEAM: Y8BLS28M4K
         ENABLE_PREVIEWS: YES
         SWIFT_EMIT_LOC_STRINGS: YES
     dependencies:

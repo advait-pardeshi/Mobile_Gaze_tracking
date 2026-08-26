@@ -28,14 +28,18 @@ struct GridSize: Identifiable, Hashable {
 
     /// Grid resolutions Experiment 1 can sweep, coarse → fine.
     ///
-    /// 3×3 repeats twice so its 18 trials are comparable in count to the
-    /// finer grids; with only 9 trials its per-cell accuracy would carry
-    /// visibly wider error bars than the rest.
+    /// Every preset is a **single pass** over its cells. 3×3 used to repeat
+    /// twice so its trial count matched the finer grids; that made one run
+    /// twice as long as the others for a within-cell precision gain the
+    /// accuracy-vs-target-size curve does not use. Repeat a *whole grid*
+    /// across runs instead — the session export keeps them together — and
+    /// note the unequal per-cell n when reporting per-cell accuracy.
     static let presets: [GridSize] = [
-        .init(rows: 3, cols: 3, repeats: 2, label: "3×3 (×2)",  estimatedMinutes: 1.0, walking: false),
+        .init(rows: 3, cols: 3, repeats: 1, label: "3×3",       estimatedMinutes: 0.5, walking: false),
         .init(rows: 4, cols: 4, repeats: 1, label: "4×4",       estimatedMinutes: 1.0, walking: false),
         .init(rows: 5, cols: 4, repeats: 1, label: "5×4",       estimatedMinutes: 1.0, walking: false),
         .init(rows: 6, cols: 4, repeats: 1, label: "6×4",       estimatedMinutes: 1.5, walking: false),
+        .init(rows: 6, cols: 5, repeats: 1, label: "6×5",       estimatedMinutes: 1.5, walking: false),
         .init(rows: 6, cols: 9, repeats: 1, label: "6×9",       estimatedMinutes: 3.0, walking: false),
         .init(rows: 9, cols: 9, repeats: 1, label: "9×9",       estimatedMinutes: 5.0, walking: false),
         .init(rows: 9, cols: 9, repeats: 1, label: "9×9 walking", estimatedMinutes: 5.0, walking: true),
@@ -629,6 +633,11 @@ final class GridExperimentController: ObservableObject {
                 ])
             self.runBundleURL = out.zip
             r.runBundleURL = out.zip
+            // Join this launch's session, so the operator can ship every run
+            // of this experiment as one archive without hand-filtering.
+            ExperimentSession.shared.record(experiment: "exp1",
+                                            label: gridSize.label,
+                                            directory: out.directory)
         } catch {
             print("grid experiment run bundle failed: \(error)")
         }

@@ -84,45 +84,58 @@ enum EyeAspectRatio {
     }
 }
 
-/// Blink decision with a per-user, slowly-adapting open-eye baseline.
+/// Blink decision: a bounded gate against a per-user, adapting open-eye
+/// baseline.
 ///
-/// A fixed EAR threshold cannot separate a blink from a **downward gaze**.
-/// Looking at the bottom of the screen lowers the upper lid over the iris,
-/// and EAR falls to roughly 0.15–0.20 — below any threshold set low enough
-/// to catch a real closure on some users, and squarely on top of 0.18. The
-/// pipeline then gates the CNN off for exactly the frames the participant is
-/// trying to reach the bottom row with, holds the previous estimate, and the
-/// dot never gets there.
+/// **What this has to separate.** A fixed EAR threshold cannot tell a blink
+/// from a **downward gaze**. Looking at the bottom of the screen lowers the
+/// upper lid over the iris and EAR falls to roughly 0.15–0.20 with the eye
+/// wide open — the same range a threshold has to sit in to catch a real
+/// closure. A ratio against the user's own baseline is better but not enough
+/// on its own: 0.62 x a 0.30 baseline is 0.186, which is the fixed threshold
+/// again under another name.
 ///
-/// What actually distinguishes the two is *depth relative to that person's
-/// own open eye*: a lid lowered for a downward gaze keeps ~65–80 % of the
-/// open aperture, a blink collapses to ~30 %. So the gate is a fraction of a
-/// running baseline, with an absolute floor as a backstop for the first few
-/// frames and for unusually narrow eyes.
+/// **What actually separates them is duration.** A blink is a fast transient,
+/// 100–150 ms, three to five frames at 30 Hz. A downward gaze is a *state*
+/// that lasts as long as the participant is looking there — the whole dwell,
+/// seconds at a time. So the gate is bounded: it may suppress the CNN for a
+/// blink's worth of frames and no longer. Past that the low EAR is taken as
+/// the new normal, the baseline is pulled toward it, and the CNN runs again.
 ///
-/// The baseline attacks fast and decays slowly: it should follow a user
-/// settling into position within a second, but must not be dragged down by a
-/// blink (or by a long downward dwell) until it starts calling blinks open.
+/// That bound is the part that matters. Without it the gate has no exit: while
+/// it is closed the CNN never runs, so no new estimate arrives, so nothing can
+/// re-open it. A participant looking at the bottom row would see the dot
+/// freeze, then vanish, and stay gone until they looked back up.
+///
+/// `absoluteFloor` is the one unbounded case. Below it the eye really is shut
+/// — no baseline ratio and no duration argument applies — so gating continues
+/// for as long as it lasts.
 struct BlinkDetector {
 
-    /// Fraction of the running baseline below which the eye counts as closed.
+    /// Fraction of the running baseline below which the eye may be closed.
     static var closedRatio: Double { PipelineTuning.blinkEARRatio }
-    /// Absolute EAR below which the eye is closed regardless of baseline —
-    /// catches the case where the baseline itself was learned on a blink.
+    /// Hard floor: below this the eye is shut regardless of baseline or
+    /// duration. The only gate that never times out.
     static var absoluteFloor: Double { PipelineTuning.blinkEARFloor }
+    /// Longest run of gated frames a blink is allowed to be. Past this the
+    /// low EAR is a sustained lid position, not a blink.
+    static var maxGatedFrames: Int { PipelineTuning.blinkMaxGatedFrames }
     /// Baseline used until a real one is learned. Overwritten by the first
     /// finite EAR, so this only covers the pre-roll.
     static let initialBaseline: Double = 0.28
 
     /// Smoothing when the current EAR is *above* the baseline (opening).
     private static let attack: Double = 0.10
-    /// Smoothing when it is *below* (closing). ~1/10th the attack, so a
-    /// blink barely moves the baseline but a genuinely narrower eye still
-    /// converges over a few seconds.
+    /// Smoothing when it is below but still open (a narrower eye).
     private static let decay: Double = 0.01
+    /// Smoothing once the gate has timed out. Fast on purpose: the decision
+    /// that this is a sustained lid position has already been made, and a
+    /// slow adapt here would re-trip the gate on the very next frame.
+    private static let reopenAdapt: Double = 0.25
 
     private var baseline: Double = BlinkDetector.initialBaseline
     private var learned = false
+    private var gatedRun = 0
 
     /// Current open-eye baseline, for the instrumentation log.
     var currentBaseline: Double { baseline }
@@ -130,25 +143,42 @@ struct BlinkDetector {
     mutating func reset() {
         baseline = BlinkDetector.initialBaseline
         learned = false
+        gatedRun = 0
     }
 
-    /// Feed this frame's mean EAR; returns true iff it should be gated as a
-    /// blink. A non-finite EAR (no face, no landmarks) is *not* a blink —
+    /// Feed this frame's mean EAR; returns true iff the CNN should be
+    /// skipped. A non-finite EAR (no face, no landmarks) is *not* a blink —
     /// that frame has already failed upstream for other reasons.
     mutating func isBlink(meanEAR ear: Double) -> Bool {
-        guard ear.isFinite else { return false }
+        guard ear.isFinite else { gatedRun = 0; return false }
         if !learned {
             baseline = ear
             learned = true
         }
-        let threshold = max(Self.absoluteFloor, Self.closedRatio * baseline)
-        let closed = ear < threshold
-        // Only open frames teach the baseline. Updating it on closed frames
-        // too would let a long closure walk the threshold down onto itself.
-        if !closed {
-            let a = ear > baseline ? Self.attack : Self.decay
-            baseline += (ear - baseline) * a
+
+        // Genuinely shut. No timeout: holding here is correct for as long as
+        // it lasts, and the pipeline drops the estimate separately once the
+        // closure outlasts a plausible blink.
+        if ear < Self.absoluteFloor {
+            gatedRun += 1
+            return true
         }
-        return closed
+
+        if ear < Self.closedRatio * baseline {
+            gatedRun += 1
+            if gatedRun > Self.maxGatedFrames {
+                // Too long to be a blink. Accept it as the working lid
+                // position and let the CNN see the frame.
+                baseline += (ear - baseline) * Self.reopenAdapt
+                return false
+            }
+            return true
+        }
+
+        gatedRun = 0
+        // Only open frames teach the baseline at the slow rates. Updating it
+        // on gated frames would let a closure walk the threshold onto itself.
+        baseline += (ear - baseline) * (ear > baseline ? Self.attack : Self.decay)
+        return false
     }
 }

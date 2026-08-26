@@ -492,7 +492,7 @@ final class PredictiveTaskController: ObservableObject {
     init(screenSize: CGSize,
          calibration: CalibrationModel,
          audio: WordAudioPlayer,
-         questions: [PromptQuestion] = PromptQuestionSet.standard,
+         questions: [PromptQuestion] = PromptQuestionSet.session(),
          predictor: ResponsePredictor = ResponseTrie(),
          scoring: PredictiveTaskResult.Scoring = .cued,
          dwellRequirement: CFTimeInterval = 1.0,
@@ -536,7 +536,8 @@ final class PredictiveTaskController: ObservableObject {
                      "control_dwell_requirement_s": controlDwellRequirement,
                      "refresh_lockout_s": refreshLockout,
                      "prompt_min_s": promptMinSeconds,
-                     "trial_timeout_s": trialTimeout])
+                     "trial_timeout_s": trialTimeout,
+                     "n_questions": Double(questions.count)])
     }
 
     deinit { timer?.invalidate() }
@@ -1005,6 +1006,11 @@ final class PredictiveTaskController: ObservableObject {
                 ])
             self.runBundleURL = out.zip
             r.runBundleURL = out.zip
+            // Join this launch's session, so the operator can ship every run
+            // of this experiment as one archive without hand-filtering.
+            ExperimentSession.shared.record(experiment: "exp4",
+                                            label: "predictive_\(scoring.rawValue)",
+                                            directory: out.directory)
         } catch {
             print("experiment4 predictive run bundle failed: \(error)")
         }

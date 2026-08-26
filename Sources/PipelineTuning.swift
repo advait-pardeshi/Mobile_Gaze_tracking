@@ -71,18 +71,21 @@ enum PipelineTuning {
 
     // MARK: - Blink gating
 
-    /// Blink gate, as a fraction of the participant's own running open-eye
-    /// EAR (see `BlinkDetector`), with an absolute backstop.
+    /// Blink gate — see `BlinkDetector`, which owns the logic.
     ///
-    /// This used to be a single absolute threshold of 0.18. That cannot be
-    /// set: a downward gaze — looking at the bottom row of any of the
-    /// experiment grids — drops EAR to ~0.15–0.20 with the eye wide open, so
-    /// 0.18 gated the CNN off exactly when the participant was reaching the
-    /// bottom of the screen and the dot froze mid-travel. A ratio against the
-    /// user's own baseline separates the two: a downward gaze keeps ~65–80 %
-    /// of the open aperture, a blink collapses to ~30 %.
-    static let blinkEARRatio: Double = 0.62
-    static let blinkEARFloor: Double = 0.13
+    /// This was a single absolute threshold of 0.18. That cannot be set: a
+    /// downward gaze (the bottom row of every experiment grid) drops EAR to
+    /// ~0.15–0.20 with the eye wide open, so 0.18 gated the CNN off exactly
+    /// when the participant was reaching the bottom of the screen. Replacing
+    /// it with a ratio alone did not help — 0.62 x a 0.30 baseline is 0.186,
+    /// the same number — so the gate is now bounded in *time* as well, which
+    /// is what actually distinguishes a blink from a sustained lid position.
+    static let blinkEARRatio: Double = 0.55
+    /// Below this the eye is shut outright; this gate does not time out.
+    static let blinkEARFloor: Double = 0.12
+    /// Longest a ratio-triggered gate may suppress the CNN, in frames.
+    /// ~170 ms at 30 Hz — a blink is 100–150 ms, a downward gaze is seconds.
+    static let blinkMaxGatedFrames: Int = 5
 
     /// Longest run of consecutive blink-gated frames that will keep holding
     /// the previous estimate. Past this the estimate is dropped rather than
@@ -111,7 +114,7 @@ enum PipelineTuning {
         + "gaze(minCutoff=\(gazeAngleMinCutoff),beta=\(gazeAngleBeta)) "
         + "eye(minCutoff=\(eyePositionMinCutoff),beta=\(eyePositionBeta)) "
         + "head(minCutoff=\(headPoseMinCutoff),beta=\(headPoseBeta)) "
-        + "blinkEAR=ratio\(blinkEARRatio)/floor\(blinkEARFloor) "
+        + "blinkEAR=ratio\(blinkEARRatio)/floor\(blinkEARFloor)/maxGated\(blinkMaxGatedFrames) "
         + "debugEvery=\(debugCropPublishInterval)"
     }
 }

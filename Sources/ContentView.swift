@@ -4,6 +4,11 @@ struct ContentView: View {
     @StateObject private var viewModel = GazeViewModel()
     @State private var showGridPicker = false
     @State private var showModelFetch = false
+    @State private var sessionShareURL: ShareItem?
+    @State private var sessionShareError: String?
+    /// Observed so the session-share button appears the moment the first run
+    /// of this launch finishes.
+    @ObservedObject private var session = ExperimentSession.shared
 
     var body: some View {
         GeometryReader { geo in
@@ -133,6 +138,27 @@ struct ContentView: View {
                             triggerButton("Experiment 1 — Grid",
                                           color: .purple.opacity(0.85)) {
                                 showGridPicker = true
+                            }
+                            // Two session exports, both scoped to this
+                            // launch and both emptied by relaunching the app
+                            // — which is also how you start a new
+                            // participant. The per-experiment one is for
+                            // shipping a single sweep; the everything one is
+                            // for the end of a whole sitting.
+                            if session.runCount(of: "exp1") > 0 {
+                                triggerButton(
+                                    "Share Exp 1 (\(session.runCount(of: "exp1")) runs)",
+                                    color: .teal.opacity(0.95)) {
+                                    shareSession("exp1")
+                                }
+                            }
+                            if session.runs.count > 0 {
+                                triggerButton(
+                                    "Share Everything (\(session.runs.count) runs)",
+                                    color: .mint.opacity(0.95),
+                                    textColor: .black) {
+                                    shareEverything()
+                                }
                             }
                             triggerButton("Collect Fine-tune Data",
                                           color: .yellow.opacity(0.9),
@@ -335,6 +361,15 @@ struct ContentView: View {
                     onDismiss: { showModelFetch = false }
                 )
             }
+            .sheet(item: $sessionShareURL) { item in
+                SessionShareSheet(items: [item.url])
+            }
+            .alert("Export failed",
+                   isPresented: .constant(sessionShareError != nil)) {
+                Button("OK") { sessionShareError = nil }
+            } message: {
+                Text(sessionShareError ?? "")
+            }
         }
     }
 
@@ -369,9 +404,48 @@ struct ContentView: View {
         }
     }
 
+    /// Build and present this launch's archive for one experiment.
+    private func shareSession(_ experiment: String) {
+        do {
+            sessionShareURL = ShareItem(
+                url: try ExperimentSession.shared.export(experiment: experiment))
+        } catch {
+            sessionShareError = error.localizedDescription
+        }
+    }
+
+    /// Every experiment's runs from this launch, grouped by experiment in
+    /// one archive.
+    private func shareEverything() {
+        do {
+            sessionShareURL = ShareItem(
+                url: try ExperimentSession.shared.exportAll())
+        } catch {
+            sessionShareError = error.localizedDescription
+        }
+    }
+
     /// Format one row of the grid-size picker, e.g. "4×4  (16 trials · ~1.0 min)".
     private func buttonLabel(for size: GridSize) -> String {
         String(format: "%@  (%d trials · ~%.1f min)",
                size.label, size.trialCount, size.estimatedMinutes)
     }
+}
+
+/// `sheet(item:)` needs an `Identifiable` payload. A local wrapper rather
+/// than `extension URL: Identifiable` — conforming an imported type to an
+/// imported protocol breaks the day Foundation adds that conformance itself.
+private struct ShareItem: Identifiable {
+    let url: URL
+    var id: String { url.absoluteString }
+}
+
+/// Share-sheet bridge for the session archive. Named apart from the results
+/// views' own wrappers so no two files declare the same symbol.
+private struct SessionShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
 }

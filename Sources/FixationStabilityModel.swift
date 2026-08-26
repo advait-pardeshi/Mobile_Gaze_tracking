@@ -619,6 +619,11 @@ final class FixationStabilityController: ObservableObject {
                 ])
             self.runBundleURL = out.zip
             r.runBundleURL = out.zip
+            // Join this launch's session, so the operator can ship every run
+            // of this experiment as one archive without hand-filtering.
+            ExperimentSession.shared.record(experiment: "exp2",
+                                            label: "\(rows)×\(cols)",
+                                            directory: out.directory)
         } catch {
             print("experiment2 fixation run bundle failed: \(error)")
         }

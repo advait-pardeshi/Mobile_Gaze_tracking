@@ -13,6 +13,9 @@ struct GridExperimentResultsView: View {
     let onRerun: () -> Void
 
     @State private var shareURL: URL?
+    /// Observed so the session button's run count updates the moment this
+    /// run joins it.
+    @ObservedObject private var session = ExperimentSession.shared
     @State private var showShare = false
     @State private var exportError: String?
 
@@ -109,7 +112,12 @@ struct GridExperimentResultsView: View {
                             .cornerRadius(10)
                     }
                     Button(action: exportCSV) {
-                        Text("Export CSV")
+                        // Explicitly "all-time": this is the cumulative
+                        // master log across every run the phone has ever
+                        // done. "Share All" next to it is the session-scoped
+                        // one, and mixing them up sends another participant's
+                        // data.
+                        Text("All-Time CSV")
                             .font(.body.weight(.medium))
                             .padding(.horizontal, 22)
                             .padding(.vertical, 10)
@@ -124,6 +132,17 @@ struct GridExperimentResultsView: View {
                                 .padding(.horizontal, 22)
                                 .padding(.vertical, 10)
                                 .background(Color.orange.opacity(0.9))
+                                .foregroundColor(.white)
+                                .cornerRadius(10)
+                        }
+                    }
+                    if session.runCount(of: "exp1") > 0 {
+                        Button(action: exportSession) {
+                            Text("Share Exp 1 (\(session.runCount(of: "exp1")))")
+                                .font(.body.weight(.semibold))
+                                .padding(.horizontal, 22)
+                                .padding(.vertical, 10)
+                                .background(Color.teal.opacity(0.95))
                                 .foregroundColor(.white)
                                 .cornerRadius(10)
                         }
@@ -169,6 +188,25 @@ struct GridExperimentResultsView: View {
         shareURL = url
         exportError = nil
         showShare = true
+    }
+
+    /// Every Experiment 1 run from this launch, as one archive.
+    ///
+    /// Experiment 1 only — the button is labelled with the experiment for
+    /// exactly that reason. The idle screen's "Share Everything" is the one
+    /// that sweeps all four experiments up together.
+    ///
+    /// `All-Time CSV` next to it ships the *cumulative* master log — every
+    /// run the phone has ever done, including previous participants' — which
+    /// is almost never what you want to send.
+    private func exportSession() {
+        do {
+            shareURL = try ExperimentSession.shared.export(experiment: "exp1")
+            exportError = nil
+            showShare = true
+        } catch {
+            exportError = error.localizedDescription
+        }
     }
 
     private func exportRunBundle() {

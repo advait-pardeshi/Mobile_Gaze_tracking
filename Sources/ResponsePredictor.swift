@@ -85,8 +85,13 @@ struct ResponseTrie: ResponsePredictor {
     /// the authored paths, which the free condition allows. Deliberately a
     /// set of sentence-enders so a wandering response can still be finished
     /// rather than dead-ending on a grid of blanks.
+    ///
+    /// These are the *only* words in the file chosen without regard to the
+    /// question, and that is the point: they exist to terminate an
+    /// off-script response, not to answer anything. Every word inside a
+    /// question's own trie is on-topic for that question.
     static let fallback = ["please", "thanks", "now", "today",
-                           "more", "help", "stop"]
+                           "yes", "no", "okay"]
 
     func candidates(for question: PromptQuestion,
                     prefix: [String],
@@ -98,9 +103,25 @@ struct ResponseTrie: ResponsePredictor {
 
 /// The fixed question set. Order is shuffled per run; the set itself is
 /// constant across participants so the trials are comparable.
+///
+/// **Authoring rule for every node below.** A candidate has to be both a
+/// grammatical continuation of its prefix *and* a plausible answer to that
+/// question. Nothing is padded to fill the grid: a node with four sensible
+/// continuations offers four, and the overlay renders the remaining slots as
+/// inert blanks (`PredictiveCellKind.blank`). That is deliberate — a filler
+/// word is selectable, so padding "I want to" out to seven with `sleep`,
+/// `stop` and `help` on a question about drinks manufactures selections the
+/// predictor caused and scores them against the participant, and it inflates
+/// the keystroke-savings figure with words nobody would ever pick.
+///
+/// The trie is also wide enough that the free condition rarely falls through
+/// to `ResponseTrie.fallback`: each question authors the branches a
+/// participant actually takes (yes/no openers, `I'm …`, `I don't …`, a bare
+/// one-word answer), not just the cued path.
 enum PromptQuestionSet {
 
-    /// Five questions, ~3–5 selections each.
+    /// The full authored pool, ~3–5 selections each. A run uses a subset of
+    /// this — see `session(count:)`.
     ///
     /// `drink` is deliberately cued with **"I want to drink water"** — the
     /// exact sentence Experiment 3 composes from its static 4×3 grid. That
@@ -111,19 +132,60 @@ enum PromptQuestionSet {
         feeling, drink, hungry, help, going,
     ]
 
+    /// The question every session must include, whatever else is drawn.
+    ///
+    /// Without pinning it, a run that happened not to draw `drink` would
+    /// carry no comparison against Experiment 3 at all — and that comparison
+    /// is the reason Experiment 4 exists in its current form.
+    static let pinned = drink
+
+    /// Number of questions a run asks. Below the pool size, so each session
+    /// samples it.
+    static let sessionQuestionCount = 3
+
+    /// The questions for one run: `pinned`, plus enough others drawn at
+    /// random to reach `count`.
+    ///
+    /// **Note this weakens cross-participant comparison**, and deliberately:
+    /// the pool is authored to be constant so every participant meets the
+    /// identical trial, and drawing a subset breaks that for every question
+    /// except `pinned`. Per-question aggregates therefore have to be filtered
+    /// by `question_key` (present on every logged row) and will have unequal
+    /// n across the pool. `pinned` is the only one guaranteed a full n.
+    static func session(count: Int = sessionQuestionCount) -> [PromptQuestion] {
+        guard count < standard.count else { return standard }
+        let rest = standard.filter { $0.key != pinned.key }
+        return ([pinned] + rest.shuffled().prefix(max(0, count - 1)))
+    }
+
     static let feeling = PromptQuestion(
         key: "feeling",
         text: "How are you feeling today?",
         cuedAnswer: ["I", "feel", "good", "today"],
         tree: [
-            "": ["I", "I'm", "Not", "Yes", "No", "Very", "Thanks"],
-            "I": ["feel", "am", "want", "need", "don't", "was", "have"],
+            "": ["I", "I'm", "Not", "Very", "Good", "Tired", "Okay"],
+            "I": ["feel", "am", "was", "don't", "still", "really"],
             "I feel": ["good", "bad", "tired", "okay", "happy", "sick", "better"],
-            "I feel good": ["today", "now", "thanks", "really", "very", "much", "please"],
-            "I feel bad": ["today", "now", "really", "very", "much", "sorry", "please"],
-            "I feel tired": ["today", "now", "really", "very", "much", "always", "please"],
+            "I feel good": ["today", "now", "thanks", "too"],
+            "I feel bad": ["today", "now", "sorry"],
+            "I feel tired": ["today", "now", "always"],
+            "I feel okay": ["today", "now", "thanks"],
+            "I feel happy": ["today", "now", "thanks"],
+            "I feel sick": ["today", "now", "sorry"],
+            "I feel better": ["today", "now", "thanks"],
+            "I am": ["good", "bad", "tired", "okay", "happy", "sick", "fine"],
+            "I don't": ["feel", "know"],
+            "I don't feel": ["good", "well", "bad", "okay"],
             "I'm": ["good", "bad", "tired", "okay", "happy", "sick", "fine"],
-            "Not": ["good", "bad", "well", "very", "really", "today", "much"],
+            "I'm good": ["today", "now", "thanks"],
+            "I'm tired": ["today", "now", "always"],
+            "I'm okay": ["today", "now", "thanks"],
+            "Not": ["good", "bad", "well", "really", "today"],
+            "Not good": ["today", "now", "sorry"],
+            "Very": ["good", "bad", "tired", "happy", "sick"],
+            "Good": ["thanks", "today", "now"],
+            "Tired": ["today", "now"],
+            "Okay": ["thanks", "today", "now"],
         ])
 
     static let drink = PromptQuestion(
@@ -131,13 +193,29 @@ enum PromptQuestionSet {
         text: "What would you like to drink?",
         cuedAnswer: ["I", "want", "to", "drink", "water"],
         tree: [
-            "": ["I", "I'd", "Yes", "No", "Water", "Please", "Nothing"],
-            "I": ["want", "would", "need", "like", "don't", "feel", "am"],
-            "I want": ["to", "water", "more", "some", "a", "juice", "tea"],
-            "I want to": ["drink", "eat", "go", "sleep", "have", "stop", "help"],
-            "I want to drink": ["water", "juice", "milk", "tea", "coffee", "more", "please"],
-            "I want water": ["please", "now", "thanks", "more", "today", "cold", "help"],
-            "I need": ["to", "water", "help", "more", "some", "a", "food"],
+            "": ["I", "I'd", "Water", "Juice", "Nothing", "Some", "Please"],
+            "I": ["want", "would", "need", "like", "don't"],
+            "I want": ["to", "water", "juice", "milk", "tea", "some", "more"],
+            "I want to": ["drink", "have", "try"],
+            "I want to drink": ["water", "juice", "milk", "tea", "coffee", "something"],
+            "I want to drink water": ["please", "now", "thanks"],
+            "I want water": ["please", "now", "thanks"],
+            "I want juice": ["please", "now", "thanks"],
+            "I want milk": ["please", "now", "thanks"],
+            "I want tea": ["please", "now", "thanks"],
+            "I want some": ["water", "juice", "milk", "tea", "coffee"],
+            "I need": ["water", "a", "to", "some"],
+            "I need water": ["please", "now", "thanks"],
+            "I don't": ["want", "need"],
+            "I don't want": ["anything", "water", "juice", "milk"],
+            "I'd": ["like", "love", "prefer"],
+            "I'd like": ["water", "juice", "milk", "tea", "coffee", "some", "a"],
+            "I'd like some": ["water", "juice", "milk", "tea", "coffee"],
+            "Water": ["please", "now", "thanks"],
+            "Juice": ["please", "now", "thanks"],
+            "Nothing": ["thanks", "please", "now"],
+            "Some": ["water", "juice", "milk", "tea", "coffee"],
+            "Please": ["water", "juice", "milk", "tea"],
         ])
 
     static let hungry = PromptQuestion(
@@ -145,13 +223,33 @@ enum PromptQuestionSet {
         text: "Are you hungry?",
         cuedAnswer: ["Yes", "I", "want", "to", "eat"],
         tree: [
-            "": ["Yes", "No", "I", "I'm", "Not", "Maybe", "Please"],
-            "Yes": ["I", "please", "thanks", "very", "a", "now", "I'm"],
-            "Yes I": ["want", "am", "need", "would", "feel", "don't", "can"],
-            "Yes I want": ["to", "food", "more", "some", "water", "a", "please"],
-            "Yes I want to": ["eat", "drink", "go", "sleep", "have", "stop", "help"],
-            "No": ["I", "thanks", "not", "I'm", "please", "now", "thank"],
-            "No I": ["am", "don't", "feel", "want", "need", "was", "can't"],
+            "": ["Yes", "No", "I", "I'm", "Not", "Maybe", "A"],
+            "Yes": ["I", "please", "very", "a", "thanks", "now"],
+            "Yes I": ["want", "am", "need", "would", "could"],
+            "Yes I want": ["to", "food", "something", "some", "more"],
+            "Yes I want to": ["eat", "have", "try"],
+            "Yes I want to eat": ["now", "please", "something", "more"],
+            "Yes I am": ["hungry", "very", "really", "now"],
+            "Yes very": ["hungry", "much"],
+            "Yes a": ["little", "lot", "bit"],
+            "No": ["thanks", "thank", "I", "not", "I'm"],
+            "No thank": ["you"],
+            "No I": ["am", "don't", "just", "already"],
+            "No I am": ["not", "okay", "fine", "full"],
+            "No I don't": ["want", "need", "think"],
+            "No I already": ["ate"],
+            "Not": ["hungry", "really", "now", "very"],
+            "Not hungry": ["now", "thanks", "today"],
+            "Maybe": ["a", "later", "yes", "I"],
+            "Maybe a": ["little", "lot", "bit"],
+            "A": ["little", "lot", "bit"],
+            "A little": ["hungry", "yes", "now", "please"],
+            "I": ["want", "am", "need", "don't", "already"],
+            "I want": ["to", "food", "something", "some", "more"],
+            "I want to": ["eat", "have", "try"],
+            "I'm": ["hungry", "not", "full", "okay", "very", "starving"],
+            "I'm hungry": ["now", "please", "thanks"],
+            "I'm not": ["hungry", "really", "now"],
         ])
 
     static let help = PromptQuestion(
@@ -160,12 +258,31 @@ enum PromptQuestionSet {
         cuedAnswer: ["No", "thank", "you"],
         tree: [
             "": ["No", "Yes", "I", "Not", "Please", "Maybe", "Thanks"],
-            "No": ["thank", "thanks", "I'm", "not", "please", "I", "now"],
+            "No": ["thank", "thanks", "I'm", "I", "not"],
             "No thank": ["you"],
-            "Yes": ["please", "I", "help", "thanks", "now", "a", "very"],
-            "Yes please": ["help", "now", "thanks", "more", "I", "today", "stop"],
-            "I": ["need", "want", "am", "don't", "feel", "can't", "would"],
-            "I need": ["help", "you", "more", "to", "water", "a", "please"],
+            "No thank you": ["I'm", "now", "thanks"],
+            "No thanks": ["I'm", "I", "now"],
+            "No I'm": ["okay", "fine", "good", "alright"],
+            "No I": ["am", "don't", "can"],
+            "No I don't": ["need", "want", "think"],
+            "Yes": ["please", "I", "help", "thanks"],
+            "Yes please": ["help", "now", "thank", "I"],
+            "Yes please help": ["me", "now", "please"],
+            "Yes I": ["need", "want", "do", "can't"],
+            "Yes I need": ["help", "you", "a", "some"],
+            "I": ["need", "want", "am", "don't", "can't"],
+            "I need": ["help", "you", "a", "some", "to"],
+            "I need help": ["please", "now", "thanks"],
+            "I need you": ["please", "now", "here"],
+            "I can't": ["do", "reach", "move"],
+            "I don't": ["need", "want", "think"],
+            "I don't need": ["help", "anything", "it"],
+            "Not": ["now", "really", "yet", "today"],
+            "Not now": ["thanks", "please", "later"],
+            "Maybe": ["later", "yes", "no", "please"],
+            "Please": ["help", "come", "wait"],
+            "Please help": ["me", "now", "please"],
+            "Thanks": ["I'm", "I", "no"],
         ])
 
     static let going = PromptQuestion(
@@ -173,12 +290,31 @@ enum PromptQuestionSet {
         text: "Where do you want to go?",
         cuedAnswer: ["I", "want", "to", "go", "home"],
         tree: [
-            "": ["I", "I'd", "Home", "Outside", "Nowhere", "Please", "To"],
-            "I": ["want", "would", "need", "like", "don't", "am", "feel"],
-            "I want": ["to", "home", "out", "a", "some", "more", "help"],
-            "I want to": ["go", "drink", "eat", "sleep", "stay", "stop", "help"],
-            "I want to go": ["home", "outside", "out", "now", "bed", "please", "back"],
-            "I want to stay": ["here", "home", "now", "please", "today", "more", "inside"],
-            "Home": ["please", "now", "today", "thanks", "more", "help", "stop"],
+            "": ["I", "I'd", "Home", "Outside", "Bed", "Nowhere", "Please"],
+            "I": ["want", "would", "need", "like", "don't"],
+            "I want": ["to", "home", "out", "outside"],
+            "I want to": ["go", "stay", "leave", "come"],
+            "I want to go": ["home", "outside", "out", "back", "bed", "there", "now"],
+            "I want to go home": ["now", "please", "today", "thanks"],
+            "I want to go outside": ["now", "please", "today"],
+            "I want to go back": ["home", "inside", "now"],
+            "I want to go bed": ["now", "please"],
+            "I want to stay": ["here", "home", "inside", "now"],
+            "I want to leave": ["now", "please", "today"],
+            "I want home": ["now", "please", "today"],
+            "I need": ["to", "home", "a"],
+            "I need to": ["go", "stay", "leave"],
+            "I don't": ["want", "know", "care"],
+            "I don't want": ["to", "anywhere"],
+            "I'd": ["like", "love", "rather"],
+            "I'd like": ["to", "home", "outside"],
+            "I'd like to": ["go", "stay", "leave"],
+            "Home": ["please", "now", "today", "thanks"],
+            "Outside": ["please", "now", "today"],
+            "Bed": ["please", "now"],
+            "Nowhere": ["thanks", "now", "today"],
+            "Please": ["home", "now", "take"],
+            "Please take": ["me"],
+            "Please take me": ["home", "outside", "there"],
         ])
 }

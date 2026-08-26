@@ -519,6 +519,11 @@ final class CalibrationValidationController: ObservableObject {
                 ])
             self.runBundleURL = out.zip
             r.runBundleURL = out.zip
+            // Join this launch's session, so the operator can ship every run
+            // of this experiment as one archive without hand-filtering.
+            ExperimentSession.shared.record(experiment: "validation",
+                                            label: "9dot",
+                                            directory: out.directory)
         } catch {
             print("validation run bundle failed: \(error)")
         }
