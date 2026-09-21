@@ -1,0 +1,53 @@
+{
+  "by_experiment": {
+    "exp3": [
+      {
+        "directory": "run1_communication",
+        "label": "communication",
+        "meta": {
+          "duration_s": 36.949192,
+          "experiment": "exp3",
+          "grid": {
+            "cols": 3,
+            "rows": 4
+          },
+          "pipeline_tuning": "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.55/floor0.12/maxGated5 debugEvery=5",
+          "prediction_source": "smoothed",
+          "run_id": 20,
+          "run_label": "Experiment 3 (communication task)",
+          "sample_count": 363,
+          "schema_version": 4,
+          "screen": {
+            "h_pt": 778,
+            "w_pt": 402
+          },
+          "started_at": "2026-09-24T20:50:13Z",
+          "summary": {
+            "completed": true,
+            "correct": 5,
+            "incorrect": 3,
+            "mean_s_per_correct_word": 7.3898383999999995,
+            "mean_s_per_selection": 4.618649,
+            "n_selections": 8,
+            "selection_accuracy_pct": 62.5,
+            "words_per_min": 8.11925738457285
+          },
+          "timing": {
+            "clear_tile_cell_idx": 9,
+            "dwell_requirement_s": 1
+          },
+          "variant": "communication_task"
+        },
+        "run": 1
+      }
+    ]
+  },
+  "experiments": [
+    "exp3"
+  ],
+  "pipeline_tuning": "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.55/floor0.12/maxGated5 debugEvery=5",
+  "run_count": 1,
+  "schema_version": 4,
+  "session_stamp": "20260925_015100",
+  "session_started_at": "2026-09-24T20:50:13Z"
+}

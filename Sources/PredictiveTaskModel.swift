@@ -577,6 +577,21 @@ final class PredictiveTaskController: ObservableObject {
             phase = .failed("No questions")
             return
         }
+        // Every trie must be closed: a prefix that does not finish the
+        // sentence has to have an authored node, or the grid falls through to
+        // the question's closers mid-response and offers words unrelated to
+        // what was picked. That is an apparatus fault, not a hard trial — it
+        // changes what the participant *can* say — so it fails the run rather
+        // than quietly degrading it. Checked in both conditions: the free
+        // condition is precisely where the off-path branches get walked.
+        for q in questions {
+            let dangling = q.danglingPrefixes(count: Self.wordSlots.count)
+            if let first = dangling.first {
+                phase = .failed("\(q.key): \(dangling.count) unauthored "
+                                + "prefix(es), e.g. \"\(first)\"")
+                return
+            }
+        }
         // In the cued condition every answer must be reachable through the
         // predictor, or the trial is unwinnable and would enter the aggregate
         // as a timeout indistinguishable from a participant who could not hit

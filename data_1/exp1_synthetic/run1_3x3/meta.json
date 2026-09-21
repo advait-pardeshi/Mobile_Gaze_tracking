@@ -1,0 +1,36 @@
+{
+  "duration_s": 27.5337,
+  "experiment": "exp1",
+  "grid": {
+    "cols": 3,
+    "rows": 3
+  },
+  "pipeline_tuning": "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.55/floor0.12/maxGated5 debugEvery=5",
+  "prediction_source": "calibrated_raw",
+  "run_id": 101,
+  "run_label": "3×3",
+  "sample_count": 275,
+  "schema_version": 4,
+  "screen": {
+    "h_pt": 778,
+    "w_pt": 402
+  },
+  "started_at": "2026-08-27T11:14:03Z",
+  "summary": {
+    "accuracy_pct": 88.89,
+    "cell_tolerance_deg": 3.004836292262514,
+    "hits": 8,
+    "mean_error_deg": 1.8314715869288454,
+    "mean_error_pt": 40.86037247459783,
+    "repeats": 1,
+    "trial_count": 9,
+    "walking": false
+  },
+  "synthetic": true,
+  "synthetic_note": "Generated data. Not collected from a human participant. Generator seed 20260907; statistics modelled on exp1/run2_3x3.",
+  "timing": {
+    "capture_s": 2.0,
+    "dwell_s": 1.0
+  },
+  "variant": "3x3"
+}

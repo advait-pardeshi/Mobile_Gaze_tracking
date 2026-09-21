@@ -30,6 +30,24 @@ final class WordAudioPlayer {
     var rate: Float = 0.45
     var language: String = "en-US"
 
+    /// Spoken-form overrides, keyed by the lowercased word.
+    ///
+    /// A bare "I" is read by `AVSpeechSynthesizer` as a *letter*, which the
+    /// voice announces as "capital I" — the participant hears the case of the
+    /// glyph instead of the word they selected. Spelling it phonetically makes
+    /// the synthesizer treat it as a word again; what comes out is "I".
+    private static let spokenOverrides: [String: String] = ["i": "eye"]
+
+    /// The text actually handed to the synthesizer: every word replaced by its
+    /// spoken form, if it has one. Applied to every utterance so a word is
+    /// pronounced the same on selection, on clear, and in sentence playback.
+    private static func spoken(_ text: String) -> String {
+        text.split(separator: " ").map { token -> String in
+            let key = String(token).lowercased()
+            return spokenOverrides[key] ?? String(token)
+        }.joined(separator: " ")
+    }
+
     /// True while an utterance is in flight. Experiment 4 polls this to end
     /// its prompt phase only once the question has actually finished being
     /// spoken, so listening time never lands in the response clock.
@@ -47,7 +65,7 @@ final class WordAudioPlayer {
         if synthesizer.isSpeaking {
             synthesizer.stopSpeaking(at: .immediate)
         }
-        let utterance = AVSpeechUtterance(string: q)
+        let utterance = AVSpeechUtterance(string: Self.spoken(q))
         utterance.rate = min(0.5, rate + 0.05)
         utterance.voice = AVSpeechSynthesisVoice(language: language)
         synthesizer.speak(utterance)
@@ -61,7 +79,7 @@ final class WordAudioPlayer {
         if synthesizer.isSpeaking {
             synthesizer.stopSpeaking(at: .immediate)
         }
-        let utterance = AVSpeechUtterance(string: text)
+        let utterance = AVSpeechUtterance(string: Self.spoken(text))
         utterance.rate = rate
         utterance.voice = AVSpeechSynthesisVoice(language: language)
         synthesizer.speak(utterance)
@@ -76,7 +94,7 @@ final class WordAudioPlayer {
         if synthesizer.isSpeaking {
             synthesizer.stopSpeaking(at: .immediate)
         }
-        let utterance = AVSpeechUtterance(string: sentence)
+        let utterance = AVSpeechUtterance(string: Self.spoken(sentence))
         utterance.rate = rate
         utterance.voice = AVSpeechSynthesisVoice(language: language)
         synthesizer.speak(utterance)

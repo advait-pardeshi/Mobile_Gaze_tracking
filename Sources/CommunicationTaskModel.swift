@@ -40,18 +40,31 @@ struct CommunicationWordSet {
     let rows: Int
     let cols: Int
 
-    /// Default set: "I want to drink water" plus 7 distractors on a 4×3 grid.
+    /// Default set: "I want to drink water" plus 6 distractors and the Clear
+    /// tile, filling a 4×3 grid.
     ///
     /// Distractors are deliberately plausible AAC vocabulary rather than
     /// nonsense — a false selection only costs something if the wrong word was
     /// a realistic competitor.
     static let standard = CommunicationWordSet(
         target: ["I", "want", "to", "drink", "water"],
-        distractors: ["eat", "sleep", "help", "more", "please", "stop", "home"],
+        distractors: ["eat", "sleep", "more", "please", "stop", "home"],
         rows: 4,
         cols: 3)
 
+    /// The Clear control lives *on the grid* as a full-size tile rather than in
+    /// the bottom bar, so the participant can trigger it by dwell like any
+    /// other cell instead of needing the operator to tap for them.
+    static let clearWord = "clear"
+
+    /// Words competing for the shuffled cells. Clear is not among them: it is
+    /// pinned to `clearCellIndex`.
     var allWords: [String] { target + distractors }
+
+    /// Bottom-left cell. Clear is the one tile that does *not* move between
+    /// runs — a control the participant has to hunt for is a control they
+    /// stop using, and its position is not what the task is measuring.
+    var clearCellIndex: Int { (rows - 1) * cols }
 
     /// Resource basename convention for the bundled word PNGs:
     /// `word_<lowercased>.png`. Falls back to a rendered text tile in the
@@ -75,6 +88,8 @@ struct CommunicationCell: Identifiable {
 
     var id: Int { index }
     var imageName: String { CommunicationWordSet.imageName(for: word) }
+    /// The Clear action tile rather than a vocabulary word.
+    var isClear: Bool { word == CommunicationWordSet.clearWord }
 }
 
 /// One selection event.
@@ -96,10 +111,30 @@ struct CommunicationSelection {
     let predY: Double
 }
 
+/// One Clear selection — a backspace that removes the last word from the
+/// composed sentence.
+///
+/// A clear retracts the word from the *strip*, not from the record: the
+/// selection stays in `selections`, because a wrong pick the participant then
+/// cleared still happened and still counts against the interface. The clear is
+/// logged so the analysis can separate corrected errors from uncorrected ones.
+struct CommunicationClear {
+    /// Number of selections that had been made when Clear fired.
+    let afterSelection: Int
+    /// The word taken off the strip.
+    let removedWord: String
+    /// Was that word a correct one, i.e. did the clear rewind the sentence?
+    let removedWasCorrect: Bool
+    /// Seconds from run start to the clear.
+    let atSeconds: Double
+}
+
 struct CommunicationTaskResult {
     let wordSet: CommunicationWordSet
     let cells: [CommunicationCell]
     let selections: [CommunicationSelection]
+    /// Clears tapped during the run, in order.
+    let clears: [CommunicationClear]
     let screenSize: CGSize
     let distancePoints: Double
     let durationSeconds: Double
@@ -109,6 +144,8 @@ struct CommunicationTaskResult {
 
     /// Every word selected, in order — the sentence as actually composed.
     var composedSentence: [String] { selections.map(\.word) }
+
+    var clearCount: Int { clears.count }
 
     var correctCount: Int { selections.filter(\.isCorrect).count }
     var incorrectCount: Int { selections.count - correctCount }
@@ -190,8 +227,16 @@ struct CommunicationTaskResult {
         }
 
         lines.append("")
+        lines.append("# Clears")
+        lines.append("clear_idx,after_selection,removed_word,removed_was_correct,at_s")
+        for (i, c) in clears.enumerated() {
+            lines.append("\(i + 1),\(c.afterSelection),\(c.removedWord),"
+                         + "\(c.removedWasCorrect ? 1 : 0),\(fmt(c.atSeconds, 3))")
+        }
+
+        lines.append("")
         lines.append("# Overall")
-        lines.append("completed,target_sentence,composed_sentence,n_selections,correct,incorrect,selection_accuracy_pct,mean_s_per_selection,mean_s_per_correct_word,words_per_min,duration_s,tz_points,screen_w_pt,screen_h_pt")
+        lines.append("completed,target_sentence,composed_sentence,n_selections,n_clears,correct,incorrect,selection_accuracy_pct,mean_s_per_selection,mean_s_per_correct_word,words_per_min,duration_s,tz_points,screen_w_pt,screen_h_pt")
         var o: [String] = []
         o.append(completed ? "1" : "0")
         // Quoted: the sentences contain spaces, and a bare space would still
@@ -199,6 +244,7 @@ struct CommunicationTaskResult {
         o.append("\"\(wordSet.target.joined(separator: " "))\"")
         o.append("\"\(composedSentence.joined(separator: " "))\"")
         o.append("\(selections.count)")
+        o.append("\(clearCount)")
         o.append("\(correctCount)")
         o.append("\(incorrectCount)")
         o.append(fmt(selectionAccuracy * 100.0, 2))
@@ -258,6 +304,12 @@ final class CommunicationTaskController: ObservableObject {
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var cells: [CommunicationCell]
     @Published private(set) var selections: [CommunicationSelection] = []
+    /// Clears tapped so far, in order.
+    @Published private(set) var clears: [CommunicationClear] = []
+    /// Indices into `selections` of the words currently on the strip, in
+    /// order. A Clear selection pops the last one; the entry itself stays in
+    /// `selections`, so the log keeps every pick the participant made.
+    @Published private(set) var composedIndices: [Int] = []
     /// Index into `wordSet.target` of the word still needed. Equals
     /// `target.count` once the sentence is complete.
     @Published private(set) var expectedIndex: Int = 0
@@ -292,6 +344,11 @@ final class CommunicationTaskController: ObservableObject {
     /// leaves it. Without this, holding a fixation emits the same word every
     /// `dwellRequirement` seconds.
     private var blockedCell: Int?
+    /// True once the target sentence has been reproduced in order at least
+    /// once. Tracked separately from `expectedIndex` because a clear rewinds
+    /// that counter, and a sentence that was completed before the clear was
+    /// still completed.
+    private var sentenceEverCompleted = false
 
     private var runLog: ExperimentRunLog
     private(set) var runBundleURL: URL?
@@ -333,21 +390,31 @@ final class CommunicationTaskController: ObservableObject {
 
         // Shuffle word→cell assignment each run so the participant can't
         // learn positions across runs, which would turn a search task into a
-        // memory task and inflate the rate.
+        // memory task and inflate the rate. The Clear tile is exempt: it is
+        // pinned to the bottom-left cell and the words fill the rest.
         let nRows = wordSet.rows
         let nCols = wordSet.cols
         let targetWords = Set(wordSet.target)
-        var words = wordSet.allWords.shuffled()
-        // Pad or trim to exactly fill the grid.
         let capacity = nRows * nCols
-        if words.count > capacity {
-            words = Array(words.prefix(capacity))
+        let clearIdx = wordSet.clearCellIndex
+        var words = wordSet.allWords.shuffled()
+        // Pad or trim to exactly fill the cells the words get.
+        let wordCapacity = capacity - 1
+        if words.count > wordCapacity {
+            words = Array(words.prefix(wordCapacity))
         }
+        var wordQueue = words[...]
         let cellW = area.width / CGFloat(nCols)
         let cellH = area.height / CGFloat(nRows)
-        self.cells = words.enumerated().map { idx, word in
+        self.cells = (0..<capacity).map { idx -> CommunicationCell in
             let r = idx / nCols
             let c = idx % nCols
+            let word: String
+            if idx == clearIdx {
+                word = CommunicationWordSet.clearWord
+            } else {
+                word = wordQueue.popFirst() ?? ""
+            }
             return CommunicationCell(
                 index: idx,
                 row: r,
@@ -367,8 +434,15 @@ final class CommunicationTaskController: ObservableObject {
             ? wordSet.target[expectedIndex] : nil
     }
 
-    /// Words selected so far, in order — drives the composed-sentence strip.
+    /// Every word selected so far, in order — the full record.
     var composedSentence: [String] { selections.map(\.word) }
+
+    /// Words on the strip: the selections that have not been cleared.
+    var visibleSelections: [CommunicationSelection] {
+        composedIndices.compactMap { idx in
+            idx < selections.count ? selections[idx] : nil
+        }
+    }
 
     func start() {
         guard !cells.isEmpty else {
@@ -394,11 +468,14 @@ final class CommunicationTaskController: ObservableObject {
             return
         }
         selections.removeAll()
+        clears.removeAll()
+        composedIndices = []
         expectedIndex = 0
         activeCellIndex = nil
         dwellCell = nil
         blockedCell = nil
         lastSelectedCell = nil
+        sentenceEverCompleted = false
         dwellProgress = 0
         runStart = CACurrentMediaTime()
         lastSelectionTime = nil
@@ -412,6 +489,40 @@ final class CommunicationTaskController: ObservableObject {
         activeCellIndex = nil
         dwellProgress = 0
         result = nil
+    }
+
+    /// Take the last word back off the composed-sentence strip — a backspace,
+    /// not a reset: the rest of the sentence stands.
+    ///
+    /// This is a *display* retraction, not an undo of the data: the cleared
+    /// selection stays in `selections` and keeps counting towards the error
+    /// rate, because it happened. What it gives the participant is a way to
+    /// fix one mis-pick without losing the words already composed.
+    /// Triggered by dwelling on the Clear grid tile.
+    private func performClear() {
+        guard let removedIdx = composedIndices.popLast(),
+              removedIdx < selections.count else {
+            return
+        }
+        let removed = selections[removedIdx]
+        clears.append(CommunicationClear(
+            afterSelection: selections.count,
+            removedWord: removed.word,
+            removedWasCorrect: removed.isCorrect,
+            atSeconds: CACurrentMediaTime() - runStart))
+        // Only a correct word had advanced the sentence, so only a correct
+        // word rewinds it — clearing a mis-pick leaves the participant on the
+        // same target word they were already trying to say.
+        if removed.isCorrect {
+            expectedIndex = max(0, expectedIndex - 1)
+        }
+        lastSelectedCell = composedIndices.last.map { selections[$0].cellIndex }
+        // The next dwell starts fresh — otherwise a gaze already parked on a
+        // cell when Clear fired could immediately select again.
+        blockedCell = nil
+        dwellStart = CACurrentMediaTime()
+        resetDwell()
+        audio.speak("cleared \(removed.word)")
     }
 
     /// End the run, scoring whatever was composed. The only way a run
@@ -504,6 +615,15 @@ final class CommunicationTaskController: ObservableObject {
     private func select(_ cell: CommunicationCell,
                         at now: CFTimeInterval,
                         prediction: CGPoint) {
+        if cell.isClear {
+            // Not a word: it takes the last word back off the strip and is
+            // never scored. Block it the same way a word is, so a gaze parked
+            // on it deletes one word rather than the whole sentence.
+            performClear()
+            blockedCell = cell.index
+            resetDwell()
+            return
+        }
         let isCorrect = cell.word == expectedWord
         let selection = CommunicationSelection(
             order: selections.count + 1,
@@ -516,6 +636,7 @@ final class CommunicationTaskController: ObservableObject {
             predX: Double(prediction.x),
             predY: Double(prediction.y))
         selections.append(selection)
+        composedIndices.append(selections.count - 1)
         lastSelectionTime = now
         lastSelectedCell = cell.index
 
@@ -524,7 +645,10 @@ final class CommunicationTaskController: ObservableObject {
         // correct it, which is the whole point of the feedback channel.
         audio.speak(cell.word)
 
-        if isCorrect { expectedIndex += 1 }
+        if isCorrect {
+            expectedIndex += 1
+            if expectedIndex >= wordSet.target.count { sentenceEverCompleted = true }
+        }
 
         blockedCell = cell.index
         resetDwell()
@@ -537,11 +661,12 @@ final class CommunicationTaskController: ObservableObject {
     }
 
     private func finish() {
-        let completed = expectedIndex >= wordSet.target.count
+        let completed = sentenceEverCompleted
         var r = CommunicationTaskResult(
             wordSet: wordSet,
             cells: cells,
             selections: selections,
+            clears: clears,
             screenSize: screenSize,
             distancePoints: VisualAngle.distancePoints(for: calibration),
             durationSeconds: CACurrentMediaTime() - runStart,
@@ -552,6 +677,7 @@ final class CommunicationTaskController: ObservableObject {
                 summary: [
                     "completed": completed,
                     "n_selections": selections.count,
+                    "n_clears": clears.count,
                     "correct": r.correctCount,
                     "incorrect": r.incorrectCount,
                     "selection_accuracy_pct": r.selectionAccuracy * 100.0,

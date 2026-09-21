@@ -1,0 +1,258 @@
+{
+  "by_experiment" : {
+    "exp1" : [
+      {
+        "directory" : "run1_3x3",
+        "finished_at" : "2026-08-26T16:51:15Z",
+        "label" : "3×3",
+        "meta" : {
+          "duration_s" : 27.253844041668344,
+          "experiment" : "exp1",
+          "grid" : {
+            "cols" : 3,
+            "rows" : 3
+          },
+          "pipeline_tuning" : "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.55\/floor0.12\/maxGated5 debugEvery=5",
+          "prediction_source" : "calibrated_raw",
+          "run_id" : 13,
+          "run_label" : "3×3",
+          "sample_count" : 280,
+          "schema_version" : 4,
+          "screen" : {
+            "h_pt" : 778,
+            "w_pt" : 402
+          },
+          "started_at" : "2026-08-26T16:50:47Z",
+          "summary" : {
+            "accuracy_pct" : 55.555555555555557,
+            "cell_tolerance_deg" : 2.7352654078932352,
+            "hits" : 5,
+            "mean_error_deg" : 3.9876711203541291,
+            "mean_error_pt" : 97.812029373484066,
+            "repeats" : 1,
+            "trial_count" : 9,
+            "walking" : false
+          },
+          "timing" : {
+            "capture_s" : 2,
+            "dwell_s" : 1
+          },
+          "variant" : "3x3"
+        },
+        "run" : 1
+      },
+      {
+        "directory" : "run2_3x3",
+        "finished_at" : "2026-08-26T16:52:36Z",
+        "label" : "3×3",
+        "meta" : {
+          "duration_s" : 27.277411583338107,
+          "experiment" : "exp1",
+          "grid" : {
+            "cols" : 3,
+            "rows" : 3
+          },
+          "pipeline_tuning" : "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.55\/floor0.12\/maxGated5 debugEvery=5",
+          "prediction_source" : "calibrated_raw",
+          "run_id" : 14,
+          "run_label" : "3×3",
+          "sample_count" : 272,
+          "schema_version" : 4,
+          "screen" : {
+            "h_pt" : 778,
+            "w_pt" : 402
+          },
+          "started_at" : "2026-08-26T16:52:09Z",
+          "summary" : {
+            "accuracy_pct" : 100,
+            "cell_tolerance_deg" : 3.1145878213335072,
+            "hits" : 9,
+            "mean_error_deg" : 2.1087663575409565,
+            "mean_error_pt" : 45.348746890342738,
+            "repeats" : 1,
+            "trial_count" : 9,
+            "walking" : false
+          },
+          "timing" : {
+            "capture_s" : 2,
+            "dwell_s" : 1
+          },
+          "variant" : "3x3"
+        },
+        "run" : 2
+      },
+      {
+        "directory" : "run3_4x4",
+        "finished_at" : "2026-08-26T16:53:31Z",
+        "label" : "4×4",
+        "meta" : {
+          "duration_s" : 48.420619333337527,
+          "experiment" : "exp1",
+          "grid" : {
+            "cols" : 4,
+            "rows" : 4
+          },
+          "pipeline_tuning" : "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.55\/floor0.12\/maxGated5 debugEvery=5",
+          "prediction_source" : "calibrated_raw",
+          "run_id" : 15,
+          "run_label" : "4×4",
+          "sample_count" : 482,
+          "schema_version" : 4,
+          "screen" : {
+            "h_pt" : 778,
+            "w_pt" : 402
+          },
+          "started_at" : "2026-08-26T16:52:42Z",
+          "summary" : {
+            "accuracy_pct" : 75,
+            "cell_tolerance_deg" : 2.3369476925394306,
+            "hits" : 12,
+            "mean_error_deg" : 2.7445297319475097,
+            "mean_error_pt" : 59.063803886267451,
+            "repeats" : 1,
+            "trial_count" : 16,
+            "walking" : false
+          },
+          "timing" : {
+            "capture_s" : 2,
+            "dwell_s" : 1
+          },
+          "variant" : "4x4"
+        },
+        "run" : 3
+      },
+      {
+        "directory" : "run4_5x4",
+        "finished_at" : "2026-08-26T16:54:45Z",
+        "label" : "5×4",
+        "meta" : {
+          "duration_s" : 60.61540754167072,
+          "experiment" : "exp1",
+          "grid" : {
+            "cols" : 4,
+            "rows" : 5
+          },
+          "pipeline_tuning" : "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.55\/floor0.12\/maxGated5 debugEvery=5",
+          "prediction_source" : "calibrated_raw",
+          "run_id" : 16,
+          "run_label" : "5×4",
+          "sample_count" : 596,
+          "schema_version" : 4,
+          "screen" : {
+            "h_pt" : 778,
+            "w_pt" : 402
+          },
+          "started_at" : "2026-08-26T16:53:45Z",
+          "summary" : {
+            "accuracy_pct" : 30,
+            "cell_tolerance_deg" : 2.3369476925394306,
+            "hits" : 6,
+            "mean_error_deg" : 4.5789909290946422,
+            "mean_error_pt" : 98.693234485317234,
+            "repeats" : 1,
+            "trial_count" : 20,
+            "walking" : false
+          },
+          "timing" : {
+            "capture_s" : 2,
+            "dwell_s" : 1
+          },
+          "variant" : "5x4"
+        },
+        "run" : 4
+      }
+    ],
+    "validation" : [
+      {
+        "directory" : "run1_9dot",
+        "finished_at" : "2026-08-26T16:50:41Z",
+        "label" : "9dot",
+        "meta" : {
+          "duration_s" : 22.869774208331364,
+          "experiment" : "validation",
+          "grid" : {
+            "cols" : 3,
+            "rows" : 3
+          },
+          "pipeline_tuning" : "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.55\/floor0.12\/maxGated5 debugEvery=5",
+          "prediction_source" : "smoothed",
+          "run_id" : 25,
+          "run_label" : "Calibration validation (9 dots, free order)",
+          "sample_count" : 231,
+          "schema_version" : 4,
+          "screen" : {
+            "h_pt" : 778,
+            "w_pt" : 402
+          },
+          "started_at" : "2026-08-26T16:50:18Z",
+          "summary" : {
+            "confirmed_dots" : 9,
+            "mean_err_deg" : 1.7966188925066153,
+            "mean_err_pt" : 43.999856547145185,
+            "mean_rms_deg" : 0.89795285460893914,
+            "mean_rms_pt" : 21.98104114226544,
+            "total_dots" : 9,
+            "verdict" : "good",
+            "worst_err_deg" : 2.966844494770883
+          },
+          "timing" : {
+            "dwell_requirement_s" : 1,
+            "run_timeout_s" : 120
+          },
+          "variant" : "9dot_free_order"
+        },
+        "run" : 1
+      },
+      {
+        "directory" : "run2_9dot",
+        "finished_at" : "2026-08-26T16:52:03Z",
+        "label" : "9dot",
+        "meta" : {
+          "duration_s" : 13.914473791664932,
+          "experiment" : "validation",
+          "grid" : {
+            "cols" : 3,
+            "rows" : 3
+          },
+          "pipeline_tuning" : "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.55\/floor0.12\/maxGated5 debugEvery=5",
+          "prediction_source" : "smoothed",
+          "run_id" : 26,
+          "run_label" : "Calibration validation (9 dots, free order)",
+          "sample_count" : 133,
+          "schema_version" : 4,
+          "screen" : {
+            "h_pt" : 778,
+            "w_pt" : 402
+          },
+          "started_at" : "2026-08-26T16:51:49Z",
+          "summary" : {
+            "confirmed_dots" : 9,
+            "mean_err_deg" : 1.6383423497653669,
+            "mean_err_pt" : 35.221198162012286,
+            "mean_rms_deg" : 0.97715430837371242,
+            "mean_rms_pt" : 21.002382245724455,
+            "total_dots" : 9,
+            "verdict" : "good",
+            "worst_err_deg" : 2.6034884597569383
+          },
+          "timing" : {
+            "dwell_requirement_s" : 1,
+            "run_timeout_s" : 120
+          },
+          "variant" : "9dot_free_order"
+        },
+        "run" : 2
+      }
+    ]
+  },
+  "experiments" : [
+    "validation",
+    "exp1"
+  ],
+  "exported_at" : "2026-08-26T16:54:57Z",
+  "pipeline_tuning" : "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.55\/floor0.12\/maxGated5 debugEvery=5",
+  "run_count" : 6,
+  "schema_version" : 4,
+  "session_stamp" : "20260826_221940",
+  "session_started_at" : "2026-08-26T16:49:40Z"
+}

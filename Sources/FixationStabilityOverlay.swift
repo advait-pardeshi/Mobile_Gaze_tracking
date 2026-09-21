@@ -2,16 +2,14 @@ import SwiftUI
 
 /// Full-screen overlay for Experiment 2 (fixation stability, 4×4 grid).
 ///
-/// Deliberately sparse: the grid of boxes, and one red circle in the cell
-/// currently being held. No instruction text (global rule). The live gaze
+/// Deliberately sparse: one red circle in the cell currently being held, on a
+/// plain black field. No cell boundaries or grid lines are drawn, so there is
+/// no high-contrast edge to saccade toward mid-fixation, and no instruction
+/// text (global rule). The live gaze
 /// cursor is drawn so the prediction can be watched during a run — note that
 /// a moving cursor is also a moving stimulus, so a participant who follows it
 /// instead of the red circle will inflate the very drift this experiment
 /// measures. It is drawn dim and small for that reason.
-///
-/// Only the active cell is drawn brightly. The remaining cells stay very faint
-/// so the participant has no competing high-contrast edge to saccade toward
-/// mid-fixation, while the grid structure is still visible.
 struct FixationStabilityOverlay: View {
     @ObservedObject var controller: FixationStabilityController
     let screenSize: CGSize
@@ -25,20 +23,8 @@ struct FixationStabilityOverlay: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            // Faint grid so the layout reads as a 4×4 field.
-            GridLines(rows: controller.rows,
-                      cols: controller.cols,
-                      size: screenSize)
-                .stroke(Color.white.opacity(0.10), lineWidth: 0.5)
-
-            // Active cell box.
-            let box = controller.boxRect
-            if box.width > 0 {
-                Rectangle()
-                    .stroke(Color.white.opacity(0.45), lineWidth: 2)
-                    .frame(width: box.width - 4, height: box.height - 4)
-                    .position(x: box.midX, y: box.midY)
-            }
+            // No grid lines and no cell box: the red target is the only
+            // stimulus, so nothing competes with it for fixation.
 
             // Capture-progress ring, sized to sit just outside the target so
             // its motion stays in peripheral vision rather than on the point

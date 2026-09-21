@@ -3,8 +3,11 @@ import SwiftUI
 /// Full-screen overlay for Experiment 3 (image-based communication task).
 ///
 /// Layout: a composed-sentence strip along the top, the word-image grid in the
-/// middle, controls at the bottom. The grid is inset from both bars by the
+/// middle, controls at the bottom (Cancel / Finish). The grid is inset from both bars by the
 /// controller's layout so a fixation on either can never register as a word.
+///
+/// Clear is not a bottom-bar button: it is a full-size grid tile the
+/// participant selects by dwell, like any word.
 ///
 /// Per the global rule there are no instructions and **no prompt showing the
 /// target sentence** — the participant is told the sentence to compose verbally
@@ -67,7 +70,7 @@ struct CommunicationTaskOverlay: View {
     private var sentenceStrip: some View {
         VStack(spacing: 4) {
             HStack(spacing: 8) {
-                ForEach(Array(controller.selections.enumerated()),
+                ForEach(Array(controller.visibleSelections.enumerated()),
                         id: \.offset) { _, sel in
                     Text(sel.word)
                         .font(.title3.weight(.semibold))
@@ -77,6 +80,8 @@ struct CommunicationTaskOverlay: View {
             .frame(maxWidth: .infinity)
             .animation(.easeOut(duration: 0.15),
                        value: controller.selections.count)
+            .animation(.easeOut(duration: 0.15),
+                       value: controller.composedIndices.count)
 
             // Bare progress count, not an instruction.
             Text("\(controller.expectedIndex) / \(controller.wordSet.target.count)")
@@ -93,7 +98,7 @@ struct CommunicationTaskOverlay: View {
         let wasSelected = controller.lastSelectedCell == cell.index
         ZStack {
             RoundedRectangle(cornerRadius: 10)
-                .fill(Color.white)
+                .fill(cell.isClear ? Color(white: 0.14) : Color.white)
             wordImage(for: cell)
                 .padding(6)
             RoundedRectangle(cornerRadius: 10)
@@ -107,7 +112,19 @@ struct CommunicationTaskOverlay: View {
     /// missing — so the experiment still runs before the images are added.
     @ViewBuilder
     private func wordImage(for cell: CommunicationCell) -> some View {
-        if let ui = Self.loadImage(name: cell.imageName) {
+        if cell.isClear {
+            // Deliberately not a word image: the action tile has to read as a
+            // control, not as vocabulary the participant might compose with.
+            VStack(spacing: 6) {
+                Image(systemName: "arrow.uturn.backward")
+                    .font(.system(size: 26, weight: .semibold))
+                Text("Clear")
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .minimumScaleFactor(0.4)
+                    .lineLimit(1)
+            }
+            .foregroundColor(.white.opacity(0.85))
+        } else if let ui = Self.loadImage(name: cell.imageName) {
             Image(uiImage: ui)
                 .resizable()
                 .scaledToFit()
@@ -123,7 +140,7 @@ struct CommunicationTaskOverlay: View {
     private func controlLabel(_ title: String) -> some View {
         Text(title)
             .font(.body.weight(.medium))
-            .padding(.horizontal, 22)
+            .padding(.horizontal, 18)
             .padding(.vertical, 9)
             .background(Color.white.opacity(0.16))
             .foregroundColor(.white)

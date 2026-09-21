@@ -1,0 +1,26 @@
+selection,cell_idx,word,correct,target_pos,at_s,since_prev_s,pred_x,pred_y
+1,2,I,1,0,1.999,1.999,328.73,182.20
+2,6,want,1,1,6.578,4.579,28.50,509.03
+3,5,to,1,2,9.450,2.872,340.39,331.49
+4,5,to,0,-1,12.038,2.588,352.49,316.17
+5,11,drink,1,3,15.997,3.959,327.31,571.42
+6,10,water,1,4,18.293,2.296,213.29,654.56
+
+# Grid layout
+cell_idx,row,col,word,is_target_word,x_min,y_min,x_max,y_max
+0,0,0,stop,0,0.00,96.00,134.00,245.50
+1,0,1,home,0,134.00,96.00,268.00,245.50
+2,0,2,I,1,268.00,96.00,402.00,245.50
+3,1,0,please,0,0.00,245.50,134.00,395.00
+4,1,1,more,0,134.00,245.50,268.00,395.00
+5,1,2,to,1,268.00,245.50,402.00,395.00
+6,2,0,want,1,0.00,395.00,134.00,544.50
+7,2,1,eat,0,134.00,395.00,268.00,544.50
+8,2,2,sleep,0,268.00,395.00,402.00,544.50
+9,3,0,Clear,0,0.00,544.50,134.00,694.00
+10,3,1,water,1,134.00,544.50,268.00,694.00
+11,3,2,drink,1,268.00,544.50,402.00,694.00
+
+# Overall
+completed,target_sentence,composed_sentence,n_selections,correct,incorrect,selection_accuracy_pct,mean_s_per_selection,mean_s_per_correct_word,words_per_min,duration_s,tz_points,screen_w_pt,screen_h_pt
+1,"I want to drink water","I want to to drink water",6,5,1,83.33,3.556,4.267,14.06,21.33,1145.45,402.00,778.00

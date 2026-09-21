@@ -1,0 +1,34 @@
+{
+  "duration_s" : 58.68031237049016,
+  "experiment" : "exp1",
+  "grid" : {
+    "cols" : 4,
+    "rows" : 5
+  },
+  "pipeline_tuning" : "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.55\/floor0.12\/maxGated5 debugEvery=5",
+  "prediction_source" : "calibrated_raw",
+  "run_id" : 20,
+  "run_label" : "5×4",
+  "sample_count" : 571,
+  "schema_version" : 4,
+  "screen" : {
+    "h_pt" : 778,
+    "w_pt" : 402
+  },
+  "started_at" : "2026-08-26T17:09:06Z",
+  "summary" : {
+    "accuracy_pct" : 60,
+    "cell_tolerance_deg" : 2.336955076511721,
+    "hits" : 12,
+    "mean_error_deg" : 2.937071503626714,
+    "mean_error_pt" : 63.2269769572737,
+    "repeats" : 1,
+    "trial_count" : 20,
+    "walking" : false
+  },
+  "timing" : {
+    "capture_s" : 2,
+    "dwell_s" : 1
+  },
+  "variant" : "5x4"
+}

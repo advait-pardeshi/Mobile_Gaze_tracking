@@ -1,8 +1,15 @@
 # macOS
 .DS_Store
+PAPER.md
+project.yml
+
 
 # Xcode user-specific state
 xcuserdata/
+docs/
+paper_build/
+paper/
+
 *.xcuserstate
 
 # Xcode build output

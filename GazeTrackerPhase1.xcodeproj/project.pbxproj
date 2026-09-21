@@ -95,10 +95,10 @@
 		4E901B50D6598559264C05B4 /* ResponsePredictor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponsePredictor.swift; sourceTree = "<group>"; };
 		505624E3304DE5D810372FCA /* EyeNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EyeNormalizer.swift; sourceTree = "<group>"; };
 		52865C7C7957395644C89FAA /* CameraPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreview.swift; sourceTree = "<group>"; };
-		54F9E1A4557B6A85056B0EAB /* GazeTrackerPhase1.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = GazeTrackerPhase1.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		54F9E1A4557B6A85056B0EAB /* GazeTrackerPhase1.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GazeTrackerPhase1.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		583BCAAFD4957B7481E557A7 /* CameraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraManager.swift; sourceTree = "<group>"; };
 		5ADBC7E85386A56AB8AB9DF3 /* FaceNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceNormalizer.swift; sourceTree = "<group>"; };
-		5B6DA760CDFED09548347BC8 /* GazeNet.mlpackage */ = {isa = PBXFileReference; path = GazeNet.mlpackage; sourceTree = "<group>"; };
+		5B6DA760CDFED09548347BC8 /* GazeNet.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = GazeNet.mlpackage; sourceTree = "<group>"; };
 		645DD6A2F31649729BA8F151 /* CalibrationValidationModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationValidationModel.swift; sourceTree = "<group>"; };
 		65D928153BE9BD91812D2B91 /* GazeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeViewModel.swift; sourceTree = "<group>"; };
 		6D5A2753BC76C5946CE2A3D8 /* AccuracyTestOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccuracyTestOverlay.swift; sourceTree = "<group>"; };
@@ -133,7 +133,7 @@
 		D83CC10C266C3916A32B9ABC /* ExperimentRunLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExperimentRunLog.swift; sourceTree = "<group>"; };
 		E22C71CBFC3BF9792B606A1A /* CommunicationTaskModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunicationTaskModel.swift; sourceTree = "<group>"; };
 		E8988C78E3C62C74978BC716 /* CommunicationTaskResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunicationTaskResultsView.swift; sourceTree = "<group>"; };
-		EA552E7FAF3D7111A5B581B6 /* face_landmarker.task */ = {isa = PBXFileReference; path = face_landmarker.task; sourceTree = "<group>"; };
+		EA552E7FAF3D7111A5B581B6 /* face_landmarker.task */ = {isa = PBXFileReference; lastKnownFileType = file; path = face_landmarker.task; sourceTree = "<group>"; };
 		EB2E45585F491CFD00B7D207 /* word_home.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = word_home.png; sourceTree = "<group>"; };
 		F06E2B88781039C0259D29D0 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		F71C4340449C5DA3358CFAA6 /* word_to.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = word_to.png; sourceTree = "<group>"; };
@@ -298,7 +298,6 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					38AAC1A5965B43AF5FCA39D4 = {
-						DevelopmentTeam = Y8BLS28M4K;
 						ProvisioningStyle = Automatic;
 					};
 				};

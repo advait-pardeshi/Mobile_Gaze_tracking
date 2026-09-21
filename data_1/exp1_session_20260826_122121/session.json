@@ -1,0 +1,131 @@
+{
+  "experiment" : "exp1",
+  "exported_at" : "2026-08-26T06:56:18Z",
+  "pipeline_tuning" : "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.62\/floor0.13 debugEvery=5",
+  "run_count" : 3,
+  "runs" : [
+    {
+      "directory" : "run1_3x3",
+      "finished_at" : "2026-08-26T06:54:05Z",
+      "label" : "3×3",
+      "meta" : {
+        "duration_s" : 27.288727583334548,
+        "experiment" : "exp1",
+        "grid" : {
+          "cols" : 3,
+          "rows" : 3
+        },
+        "pipeline_tuning" : "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.62\/floor0.13 debugEvery=5",
+        "prediction_source" : "calibrated_raw",
+        "run_id" : 10,
+        "run_label" : "3×3",
+        "sample_count" : 255,
+        "schema_version" : 4,
+        "screen" : {
+          "h_pt" : 778,
+          "w_pt" : 402
+        },
+        "started_at" : "2026-08-26T06:53:38Z",
+        "summary" : {
+          "accuracy_pct" : 77.777777777777786,
+          "cell_tolerance_deg" : 2.9710333254682171,
+          "hits" : 7,
+          "mean_error_deg" : 2.7581817075532093,
+          "mean_error_pt" : 62.215549866399151,
+          "repeats" : 1,
+          "trial_count" : 9,
+          "walking" : false
+        },
+        "timing" : {
+          "capture_s" : 2,
+          "dwell_s" : 1
+        },
+        "variant" : "3x3"
+      },
+      "run" : 1
+    },
+    {
+      "directory" : "run2_4x4",
+      "finished_at" : "2026-08-26T06:55:01Z",
+      "label" : "4×4",
+      "meta" : {
+        "duration_s" : 48.544848749999801,
+        "experiment" : "exp1",
+        "grid" : {
+          "cols" : 4,
+          "rows" : 4
+        },
+        "pipeline_tuning" : "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.62\/floor0.13 debugEvery=5",
+        "prediction_source" : "calibrated_raw",
+        "run_id" : 11,
+        "run_label" : "4×4",
+        "sample_count" : 415,
+        "schema_version" : 4,
+        "screen" : {
+          "h_pt" : 778,
+          "w_pt" : 402
+        },
+        "started_at" : "2026-08-26T06:54:13Z",
+        "summary" : {
+          "accuracy_pct" : 68.75,
+          "cell_tolerance_deg" : 2.2291489072518225,
+          "hits" : 11,
+          "mean_error_deg" : 2.1038341046821203,
+          "mean_error_pt" : 47.441922571781546,
+          "repeats" : 1,
+          "trial_count" : 16,
+          "walking" : false
+        },
+        "timing" : {
+          "capture_s" : 2,
+          "dwell_s" : 1
+        },
+        "variant" : "4x4"
+      },
+      "run" : 2
+    },
+    {
+      "directory" : "run3_5x4",
+      "finished_at" : "2026-08-26T06:56:09Z",
+      "label" : "5×4",
+      "meta" : {
+        "duration_s" : 60.628760666666494,
+        "experiment" : "exp1",
+        "grid" : {
+          "cols" : 4,
+          "rows" : 5
+        },
+        "pipeline_tuning" : "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.62\/floor0.13 debugEvery=5",
+        "prediction_source" : "calibrated_raw",
+        "run_id" : 12,
+        "run_label" : "5×4",
+        "sample_count" : 481,
+        "schema_version" : 4,
+        "screen" : {
+          "h_pt" : 778,
+          "w_pt" : 402
+        },
+        "started_at" : "2026-08-26T06:55:08Z",
+        "summary" : {
+          "accuracy_pct" : 55.000000000000007,
+          "cell_tolerance_deg" : 2.2291489072518225,
+          "hits" : 11,
+          "mean_error_deg" : 2.9482011588229695,
+          "mean_error_pt" : 66.508720736277951,
+          "repeats" : 1,
+          "trial_count" : 20,
+          "walking" : false
+        },
+        "timing" : {
+          "capture_s" : 2,
+          "dwell_s" : 1
+        },
+        "variant" : "5x4"
+      },
+      "run" : 3
+    }
+  ],
+  "schema_version" : 4,
+  "session_stamp" : "20260826_122215",
+  "session_started_at" : "2026-08-26T06:52:15Z"
+}

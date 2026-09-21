@@ -1,0 +1,36 @@
+{
+  "duration_s": 48.8313,
+  "experiment": "exp1",
+  "grid": {
+    "cols": 4,
+    "rows": 4
+  },
+  "pipeline_tuning": "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.55/floor0.12/maxGated5 debugEvery=5",
+  "prediction_source": "calibrated_raw",
+  "run_id": 111,
+  "run_label": "4×4",
+  "sample_count": 488,
+  "schema_version": 4,
+  "screen": {
+    "h_pt": 778,
+    "w_pt": 402
+  },
+  "started_at": "2026-08-27T12:02:04Z",
+  "summary": {
+    "accuracy_pct": 68.75,
+    "cell_tolerance_deg": 2.2476539152459645,
+    "hits": 11,
+    "mean_error_deg": 2.4210882651636965,
+    "mean_error_pt": 54.20519147482408,
+    "repeats": 1,
+    "trial_count": 16,
+    "walking": false
+  },
+  "synthetic": true,
+  "synthetic_note": "Generated data. Not collected from a human participant. Seed 4477; statistics modelled on the real 4×4 run.",
+  "timing": {
+    "capture_s": 2.0,
+    "dwell_s": 1.0
+  },
+  "variant": "4x4"
+}

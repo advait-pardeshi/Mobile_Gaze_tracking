@@ -256,20 +256,6 @@ struct ContentView: View {
                     )
                 }
 
-                // Experiment 1: results screen.
-                if let r = viewModel.gridExperimentResult {
-                    GridExperimentResultsView(
-                        result: r,
-                        screenSize: geo.size,
-                        onDismiss: { viewModel.dismissGridExperimentResult() },
-                        onRerun: {
-                            let size = r.gridSize
-                            viewModel.dismissGridExperimentResult()
-                            viewModel.startGridExperiment(size)
-                        }
-                    )
-                }
-
                 // Calibration validation: active run (all 9 dots at once).
                 if let v = viewModel.validationController {
                     CalibrationValidationOverlay(

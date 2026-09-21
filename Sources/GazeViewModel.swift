@@ -91,8 +91,6 @@ final class GazeViewModel: ObservableObject {
 
     /// Experiment 1 (grid-focus) — active run controller, or nil.
     @Published var gridExperimentController: GridExperimentController?
-    /// Experiment 1 — most recent result.
-    @Published var gridExperimentResult: GridExperimentResult?
 
     /// Calibration validation — active run, or nil. Started automatically as
     /// soon as a calibration fit completes, so a fit is never used by an
@@ -227,7 +225,6 @@ final class GazeViewModel: ObservableObject {
             && accuracyController == nil
             && accuracyResult == nil
             && gridExperimentController == nil
-            && gridExperimentResult == nil
             && fixationController == nil
             && fixationResult == nil
             && commTaskController == nil
@@ -383,7 +380,6 @@ final class GazeViewModel: ObservableObject {
             screenSize: screenSize,
             calibration: cal
         )
-        self.gridExperimentResult = nil
         self.gridExperimentController = c
         c.start()
     }
@@ -391,10 +387,6 @@ final class GazeViewModel: ObservableObject {
     func cancelGridExperiment() {
         gridExperimentController?.cancel()
         gridExperimentController = nil
-    }
-
-    func dismissGridExperimentResult() {
-        gridExperimentResult = nil
     }
 
     /// Begin a fine-tune data-collection run. Drives the existing Experiment
@@ -426,7 +418,6 @@ final class GazeViewModel: ObservableObject {
             intrinsics: intr,
             calibration: cal
         )
-        self.gridExperimentResult = nil
         self.gridExperimentController = c
         c.start()
     }
@@ -837,6 +828,47 @@ extension GazeViewModel {
             pupil = .init(leftPx: .nan, rightPx: .nan)
         }
 
+        // ---- Projection of the filtered stream ---------------------------
+        //
+        // Computed *before* the experiment dispatch below, not after it, so
+        // that `diag` already carries the rendered point when a controller
+        // copies it. Experiment 1 ingests from the raw stream (it scores on
+        // raw, deliberately), but its log rows still have to say what the
+        // cursor was doing on that frame — and `diag` is a value type, so a
+        // point assigned after `ge.ingest` never reaches its rows.
+        //
+        // `haveCalibration` is tracked separately from `renderedPoint`
+        // because the two failures mean different things on screen: no
+        // calibration clears the dot, whereas a single non-finite projection
+        // leaves the last one alone rather than blinking it out.
+        var renderedPoint: CGPoint?
+        var haveCalibration = false
+        if let cal = calibration, haveScreen {
+            haveCalibration = true
+            let p = cal.predict(gazeCam: filtered.gazeCam)
+            if p.x.isFinite, p.y.isFinite {
+                let projected = CGPoint(x: halfW + p.x, y: halfH + p.y)
+                // In the One Euro configuration the smoothing already
+                // happened upstream, on (pitch, yaw), so this point is final.
+                // In the Kalman A/B configuration the pipeline passed the
+                // angles through untouched and the old post-projection filter
+                // runs here instead.
+                switch PipelineTuning.smoother {
+                case .oneEuro:
+                    renderedPoint = projected
+                case .kalman:
+                    let now = CACurrentMediaTime()
+                    let dt = lastKalmanTime.map { now - $0 } ?? 0
+                    lastKalmanTime = now
+                    renderedPoint = gazeKalman.update(measurement: projected, dt: dt)
+                }
+            }
+        }
+        if let r = renderedPoint {
+            diag.filtPredX = Double(r.x)
+            diag.filtPredY = Double(r.y)
+        }
+
         // ---- Calibration / Experiment 1 / accuracy: raw stream -----------
         //
         // These fit or score on the unsmoothed estimate, exactly as before
@@ -874,7 +906,9 @@ extension GazeViewModel {
                           pupilDiameters: pupil,
                           diagnostics: diag)
                 if ge.phase == .complete, let r = ge.result {
-                    gridExperimentResult = r
+                    // No results screen for Experiment 1: a completed run
+                    // logs itself and drops straight back to the menu, so the
+                    // operator can start the next run without a dismiss step.
                     gridExperimentController = nil
                     do { _ = try r.appendToMasterLog() }
                     catch { print("grid experiment log append failed: \(error)") }
@@ -882,38 +916,18 @@ extension GazeViewModel {
             }
         }
 
-        // ---- Projection of the filtered stream ---------------------------
-        guard let cal = calibration, haveScreen else {
+        guard haveCalibration else {
             gazeScreenPoint = nil
             recordFrameTime()
             finishTiming(&timing, workerDone: workerDone, diag: diag)
             return
         }
-        let p = cal.predict(gazeCam: filtered.gazeCam)
-        guard p.x.isFinite, p.y.isFinite else {
+        guard let rendered = renderedPoint else {
             recordFrameTime()
             finishTiming(&timing, workerDone: workerDone, diag: diag)
             return
         }
-        let projected = CGPoint(x: halfW + p.x, y: halfH + p.y)
-
-        // In the One Euro configuration the smoothing already happened
-        // upstream, on (pitch, yaw), so this point is final. In the Kalman
-        // A/B configuration the pipeline passed the angles through untouched
-        // and the old post-projection filter runs here instead.
-        let rendered: CGPoint
-        switch PipelineTuning.smoother {
-        case .oneEuro:
-            rendered = projected
-        case .kalman:
-            let now = CACurrentMediaTime()
-            let dt = lastKalmanTime.map { now - $0 } ?? 0
-            lastKalmanTime = now
-            rendered = gazeKalman.update(measurement: projected, dt: dt)
-        }
         gazeScreenPoint = rendered
-        diag.filtPredX = Double(rendered.x)
-        diag.filtPredY = Double(rendered.y)
 
         guard let pose = out.poseFiltered else {
             recordFrameTime()

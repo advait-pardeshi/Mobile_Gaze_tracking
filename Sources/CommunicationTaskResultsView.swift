@@ -139,6 +139,7 @@ struct CommunicationTaskResultsView: View {
                 row("Mean per correct word",
                     MetricFormat.seconds(result.meanSecondsPerCorrectWord))
                 row("Selections", "\(result.selections.count)")
+                row("Clears", "\(result.clearCount)")
             }
         }
         .padding(12)

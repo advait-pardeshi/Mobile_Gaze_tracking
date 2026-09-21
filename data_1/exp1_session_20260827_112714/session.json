@@ -1,0 +1,131 @@
+{
+  "experiment" : "exp1",
+  "exported_at" : "2026-08-27T06:01:06Z",
+  "pipeline_tuning" : "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.55\/floor0.12\/maxGated5 debugEvery=5",
+  "run_count" : 3,
+  "runs" : [
+    {
+      "directory" : "run1_3x3",
+      "finished_at" : "2026-08-27T05:59:00Z",
+      "label" : "3×3",
+      "meta" : {
+        "duration_s" : 27.282856249992619,
+        "experiment" : "exp1",
+        "grid" : {
+          "cols" : 3,
+          "rows" : 3
+        },
+        "pipeline_tuning" : "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.55\/floor0.12\/maxGated5 debugEvery=5",
+        "prediction_source" : "calibrated_raw",
+        "run_id" : 21,
+        "run_label" : "3×3",
+        "sample_count" : 272,
+        "schema_version" : 4,
+        "screen" : {
+          "h_pt" : 778,
+          "w_pt" : 402
+        },
+        "started_at" : "2026-08-27T05:58:33Z",
+        "summary" : {
+          "accuracy_pct" : 100,
+          "cell_tolerance_deg" : 2.6118308712005369,
+          "hits" : 9,
+          "mean_error_deg" : 2.7712400005767353,
+          "mean_error_pt" : 71.112974131360161,
+          "repeats" : 1,
+          "trial_count" : 9,
+          "walking" : false
+        },
+        "timing" : {
+          "capture_s" : 2,
+          "dwell_s" : 1
+        },
+        "variant" : "3x3"
+      },
+      "run" : 1
+    },
+    {
+      "directory" : "run2_4x4",
+      "finished_at" : "2026-08-27T05:59:54Z",
+      "label" : "4×4",
+      "meta" : {
+        "duration_s" : 48.411294041667134,
+        "experiment" : "exp1",
+        "grid" : {
+          "cols" : 4,
+          "rows" : 4
+        },
+        "pipeline_tuning" : "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.55\/floor0.12\/maxGated5 debugEvery=5",
+        "prediction_source" : "calibrated_raw",
+        "run_id" : 22,
+        "run_label" : "4×4",
+        "sample_count" : 474,
+        "schema_version" : 4,
+        "screen" : {
+          "h_pt" : 778,
+          "w_pt" : 402
+        },
+        "started_at" : "2026-08-27T05:59:05Z",
+        "summary" : {
+          "accuracy_pct" : 75,
+          "cell_tolerance_deg" : 1.9594668496548762,
+          "hits" : 12,
+          "mean_error_deg" : 2.8618576632120014,
+          "mean_error_pt" : 73.500692380494044,
+          "repeats" : 1,
+          "trial_count" : 16,
+          "walking" : false
+        },
+        "timing" : {
+          "capture_s" : 2,
+          "dwell_s" : 1
+        },
+        "variant" : "4x4"
+      },
+      "run" : 2
+    },
+    {
+      "directory" : "run3_5x4",
+      "finished_at" : "2026-08-27T06:00:59Z",
+      "label" : "5×4",
+      "meta" : {
+        "duration_s" : 60.625037458332372,
+        "experiment" : "exp1",
+        "grid" : {
+          "cols" : 4,
+          "rows" : 5
+        },
+        "pipeline_tuning" : "smoother=oneEuro exp2Scored=filtered gaze(minCutoff=1.2,beta=0.35) eye(minCutoff=0.5,beta=0.02) head(minCutoff=0.8,beta=0.1) blinkEAR=ratio0.55\/floor0.12\/maxGated5 debugEvery=5",
+        "prediction_source" : "calibrated_raw",
+        "run_id" : 23,
+        "run_label" : "5×4",
+        "sample_count" : 605,
+        "schema_version" : 4,
+        "screen" : {
+          "h_pt" : 778,
+          "w_pt" : 402
+        },
+        "started_at" : "2026-08-27T05:59:58Z",
+        "summary" : {
+          "accuracy_pct" : 15,
+          "cell_tolerance_deg" : 1.9594668496548762,
+          "hits" : 3,
+          "mean_error_deg" : 5.6075494827712937,
+          "mean_error_pt" : 144.48138322928679,
+          "repeats" : 1,
+          "trial_count" : 20,
+          "walking" : false
+        },
+        "timing" : {
+          "capture_s" : 2,
+          "dwell_s" : 1
+        },
+        "variant" : "5x4"
+      },
+      "run" : 3
+    }
+  ],
+  "schema_version" : 4,
+  "session_stamp" : "20260827_112714",
+  "session_started_at" : "2026-08-27T05:57:14Z"
+}
